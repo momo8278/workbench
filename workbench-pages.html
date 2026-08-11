@@ -238,8 +238,8 @@ table.rpt tr.sum td{font-weight:700;border-top:1px solid var(--line);background:
 
     <div class="auth" id="fileBox">
       <div class="who" id="fileWho" style="display:none"></div>
-      <div class="st" id="fileSt">尚未連結資料檔</div>
-      <button id="btnLinkFile">連結 OneDrive 資料檔</button>
+      <div class="st" id="fileSt">尚未連結資料夾</div>
+      <button id="btnLinkFile">連結 OneDrive 資料夾</button>
       <button class="ghost" id="btnUnlinkFile" style="display:none">改用本機儲存</button>
     </div>
 
@@ -376,15 +376,19 @@ table.rpt tr.sum td{font-weight:700;border-top:1px solid var(--line);background:
         </div>
 
         <div class="card">
-          <h2>專案排程 <span class="r" id="prjCnt"></span></h2>
+          <h2>專案進度 <span class="r" id="prjCnt"></span></h2>
+          <div style="font-size:11.5px;color:var(--ink-3);margin:-6px 0 10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <span id="prjSrc"></span>
+            <button class="btn sm" id="btnReloadPrj" style="margin-left:auto">重讀 projects.md</button>
+          </div>
           <div id="prjList"></div>
           <div class="frm">
-            <input type="text" id="pjName" placeholder="專案名稱">
+            <input type="text" id="pjName" placeholder="自己加一個專案（不寫進 projects.md）">
             <input type="number" id="pjPct" min="0" max="100" step="5" value="0" style="width:76px" title="進度 %">
             <button class="btn pri" id="btnAddPrj">新增</button>
           </div>
           <div class="frm" style="border:0;padding-top:4px;margin-top:0">
-            <input type="text" id="pjUrl" placeholder="相關連結（台帳／成品網址，可留空）">
+            <input type="text" id="pjUrl" placeholder="相關連結（可留空）">
           </div>
         </div>
       </div>
@@ -420,12 +424,20 @@ let ST = { todos:[], events:[], goals:[], projects:[] };
 let calY, calM;
 
 /* =========================================================
-   儲存層：本機 localStorage / OneDrive 檔案二選一
+   儲存層：本機 localStorage / OneDrive 資料夾二選一
+
+   連結資料夾後，夾內兩個檔各有各的寫入者，互不覆寫：
+     workbench-data.json  待辦／行程／長期目標——只有這個頁面會寫
+     projects.md          專案進度＋進展明細——由 Claude 維護，這裡只讀
    ========================================================= */
-const FS_OK = typeof window.showOpenFilePicker === 'function';
-let fileHandle = null;      // 連結中的 OneDrive JSON 檔
+const FS_OK = typeof window.showDirectoryPicker === 'function';
+const F_DATA = 'workbench-data.json';
+const F_PRJ  = 'projects.md';
+let dirHandle = null;
 let writeTimer = null;
 let lastWrite = '';
+let MD_PROJECTS = [];       // 從 projects.md 讀來的專案（唯讀）
+let prjMdInfo = '';         // 顯示用的來源說明
 
 function fileSt(msg, isErr){
   const el = document.getElementById('fileSt');
@@ -433,14 +445,63 @@ function fileSt(msg, isErr){
   el.className = 'st' + (isErr ? ' err' : '');
 }
 function syncUI(){
-  const on = !!fileHandle;
+  const on = !!dirHandle;
   document.getElementById('fileWho').style.display = on ? 'block' : 'none';
   document.getElementById('btnLinkFile').style.display = on ? 'none' : 'block';
   document.getElementById('btnUnlinkFile').style.display = on ? 'block' : 'none';
-  document.getElementById('syncSub').textContent = on ? '同步中 · OneDrive 資料檔' : '資料存這台瀏覽器';
+  document.getElementById('syncSub').textContent = on ? '同步中 · OneDrive 資料夾' : '資料存這台瀏覽器';
   document.getElementById('footHint').innerHTML = on
-    ? '資料直接寫進 OneDrive 的資料檔，其他電腦開同一個檔就同步得到。<br>← → 可換頁。'
-    : '連結 OneDrive 的資料檔就能跨機同步；沒連結時只存這台瀏覽器。<br>← → 可換頁。';
+    ? '待辦寫進資料夾的 JSON；專案進度讀 projects.md（Claude 維護，這裡不覆寫）。<br>← → 可換頁。'
+    : '連結 OneDrive 資料夾就能跨機同步；沒連結時只存這台瀏覽器。<br>← → 可換頁。';
+}
+
+/* ---------- projects.md 解析 ----------
+   - 70% 專案名 #進行中 @2026-08-11 <https://...>
+     - 2026-08-11 進展內容
+*/
+function parseProjectsMd(txt){
+  const out = [];
+  const lines = txt.split(/\r?\n/);
+  for (const ln of lines){
+    if (/^\s*>/.test(ln) || /^\s*#/.test(ln)) continue;           // 引言與標題不算資料
+    const top = ln.match(/^-\s+(\d{1,3})%\s+(.+)$/);
+    if (top){
+      let rest = top[2];
+      let status = '', date = '', url = '';
+      rest = rest.replace(/<([^>]+)>/, (m,u) => { url = u.trim(); return ''; });
+      rest = rest.replace(/@(\d{4}-\d{2}-\d{2})/, (m,d) => { date = d; return ''; });
+      rest = rest.replace(/#(\S+)/, (m,s) => { status = s; return ''; });
+      out.push({
+        id:'md-' + out.length,
+        name: rest.replace(/\s+\|/g,'').trim().replace(/\s{2,}/g,' ') || '(未命名)',
+        pct: Math.max(0, Math.min(100, Number(top[1]))),
+        status, date, url, logs:[], src:'md'
+      });
+      continue;
+    }
+    const sub = ln.match(/^\s{2,}-\s+(?:(\d{4}-\d{2}-\d{2})\s+)?(.+)$/);
+    if (sub && out.length){
+      out[out.length-1].logs.push({ date: sub[1] || '', text: sub[2].trim() });
+    }
+  }
+  return out;
+}
+async function readProjectsMd(){
+  MD_PROJECTS = []; prjMdInfo = '';
+  if (!dirHandle) return;
+  try {
+    const h = await dirHandle.getFileHandle(F_PRJ);
+    const f = await h.getFile();
+    MD_PROJECTS = parseProjectsMd(await f.text());
+    prjMdInfo = `${F_PRJ} · ${MD_PROJECTS.length} 項 · 檔案時間 ${new Date(f.lastModified).toLocaleString('zh-TW',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})}`;
+  } catch(e){
+    prjMdInfo = `資料夾裡沒有 ${F_PRJ}`;
+  }
+}
+
+/* 專案 = projects.md（唯讀）＋ 本機自訂 */
+function allProjects(){
+  return MD_PROJECTS.concat(ST.projects.map(p => ({ ...p, src:'local', logs:[] })));
 }
 
 /* handle 存 IndexedDB，下次開頁不必重選檔案（仍需一次點擊授權） */
@@ -476,26 +537,6 @@ function stateJson(){
     todos:ST.todos, events:ST.events, goals:ST.goals, projects:ST.projects
   }, null, 2);
 }
-async function writeFileNow(){
-  if (!fileHandle) return;
-  const txt = stateJson();
-  if (txt === lastWrite) return;
-  try {
-    const w = await fileHandle.createWritable();
-    await w.write(txt);
-    await w.close();
-    lastWrite = txt;
-    fileSt('已存檔 ' + new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'}));
-  } catch(e){
-    fileSt('寫入失敗：' + e.message, true);
-  }
-}
-function scheduleWrite(){
-  if (!fileHandle) return;
-  clearTimeout(writeTimer);
-  fileSt('儲存中…');
-  writeTimer = setTimeout(writeFileNow, 800);
-}
 
 /* ---------- storage ---------- */
 function load(){
@@ -511,75 +552,104 @@ function isEmptyState(){
   return !ST.todos.length && !ST.events.length && !ST.goals.length && !ST.projects.length;
 }
 
-async function readFromHandle(h){
-  const f = await h.getFile();
-  const txt = (await f.text()).trim();
-  if (!txt) return false;
-  const js = JSON.parse(txt);
-  for (const k of ['todos','events','goals','projects']){
-    if (Array.isArray(js[k])){ ST[k] = js[k]; localStorage.setItem(K[k], JSON.stringify(ST[k])); }
+async function writeDataNow(){
+  if (!dirHandle) return;
+  const txt = stateJson();
+  if (txt === lastWrite) return;
+  try {
+    const h = await dirHandle.getFileHandle(F_DATA, { create:true });
+    const w = await h.createWritable();
+    await w.write(txt);
+    await w.close();
+    lastWrite = txt;
+    fileSt('已存檔 ' + new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'}));
+  } catch(e){
+    fileSt('寫入失敗：' + e.message, true);
   }
-  lastWrite = stateJson();
-  return true;
 }
-async function linkFile(){
+function scheduleWrite(){
+  if (!dirHandle) return;
+  clearTimeout(writeTimer);
+  fileSt('儲存中…');
+  writeTimer = setTimeout(writeDataNow, 800);
+}
+
+async function readDataJson(){
+  try {
+    const h = await dirHandle.getFileHandle(F_DATA);
+    const txt = (await (await h.getFile()).text()).trim();
+    if (!txt) return false;
+    const js = JSON.parse(txt);
+    for (const k of ['todos','events','goals','projects']){
+      if (Array.isArray(js[k])){ ST[k] = js[k]; localStorage.setItem(K[k], JSON.stringify(ST[k])); }
+    }
+    lastWrite = stateJson();
+    return true;
+  } catch(e){
+    return false;   // 檔案不存在 = 第一次連結，交給 writeDataNow 建立
+  }
+}
+
+async function useDir(h, isFirstLink){
+  dirHandle = h;
+  const had = await readDataJson();
+  if (!had) await writeDataNow();
+  await readProjectsMd();
+  await idbSet('dirHandle', h);
+  document.getElementById('fileWho').textContent = '✓ ' + h.name + '／';
+  syncUI();
+  fileSt(had ? '已載入資料夾' : (isFirstLink ? '已建立 ' + F_DATA : '已載入資料夾'));
+  renderAllLocal();
+}
+async function linkDir(){
   if (!FS_OK){
-    fileSt('這個瀏覽器不支援檔案存取（需 Edge/Chrome，且須為 https）', true);
+    fileSt('這個瀏覽器不支援資料夾存取（需桌面版 Edge/Chrome，且須為 https）', true);
     return;
   }
   try {
-    const [h] = await window.showOpenFilePicker({
-      types:[{ description:'工作台資料檔', accept:{'application/json':['.json']} }],
-      multiple:false
-    });
-    const perm = await h.requestPermission({ mode:'readwrite' });
-    if (perm !== 'granted'){ fileSt('沒有取得寫入權限', true); return; }
-    fileHandle = h;
-    const had = await readFromHandle(h);
-    if (!had) await writeFileNow();       // 空檔就把目前資料寫進去
-    await idbSet('fileHandle', h);
-    document.getElementById('fileWho').textContent = '✓ ' + h.name;
-    syncUI();
-    fileSt(had ? '已載入資料檔' : '已建立資料內容');
-    renderAllLocal();
+    const h = await window.showDirectoryPicker({ mode:'readwrite' });
+    if (await h.requestPermission({ mode:'readwrite' }) !== 'granted'){
+      fileSt('沒有取得寫入權限', true); return;
+    }
+    await useDir(h, true);
   } catch(e){
     if (e.name !== 'AbortError') fileSt('連結失敗：' + e.message, true);
   }
 }
-async function restoreFile(){
+async function restoreDir(){
   if (!FS_OK) return false;
   try {
-    const h = await idbGet('fileHandle');
+    const h = await idbGet('dirHandle');
     if (!h) return false;
-    const perm = await h.queryPermission({ mode:'readwrite' });
-    if (perm === 'granted'){
-      fileHandle = h;
-      await readFromHandle(h);
-      document.getElementById('fileWho').textContent = '✓ ' + h.name;
-      syncUI();
-      fileSt('已連結資料檔');
+    if (await h.queryPermission({ mode:'readwrite' }) === 'granted'){
+      await useDir(h, false);
       return true;
     }
-    /* 瀏覽器重開後權限需要一次使用者手勢才能恢復 */
-    document.getElementById('fileWho').style.display = 'block';
-    document.getElementById('fileWho').textContent = '⏸ ' + h.name;
-    document.getElementById('btnLinkFile').textContent = '重新授權資料檔';
-    document.getElementById('btnLinkFile').onclick = async () => {
-      const p = await h.requestPermission({ mode:'readwrite' });
-      if (p === 'granted'){
-        fileHandle = h;
-        await readFromHandle(h);
-        syncUI();
-        fileSt('已重新連結');
-        renderAllLocal();
-        document.getElementById('btnLinkFile').textContent = '連結 OneDrive 資料檔';
-        document.getElementById('btnLinkFile').onclick = linkFile;
+    /* 瀏覽器重開後，權限要等一次使用者手勢才能恢復 */
+    const who = document.getElementById('fileWho');
+    who.style.display = 'block';
+    who.textContent = '⏸ ' + h.name + '／';
+    const btn = document.getElementById('btnLinkFile');
+    btn.textContent = '重新授權資料夾';
+    btn.onclick = async () => {
+      if (await h.requestPermission({ mode:'readwrite' }) === 'granted'){
+        await useDir(h, false);
+        btn.textContent = '連結 OneDrive 資料夾';
+        btn.onclick = linkDir;
       } else fileSt('授權被拒', true);
     };
-    fileSt('資料檔需重新授權才會同步');
+    fileSt('資料夾需重新授權才會同步');
     return false;
   } catch(e){ return false; }
 }
+/* Claude 改完 projects.md 後按一下就更新，不必重開頁面 */
+async function reloadProjects(){
+  if (!dirHandle){ fileSt('尚未連結資料夾', true); return; }
+  await readProjectsMd();
+  renderPrjs(); renderHome();
+  fileSt('已重讀 ' + F_PRJ);
+}
+
 const uid = () => Math.random().toString(36).slice(2,9) + Date.now().toString(36).slice(-4);
 
 /* ---------- date helpers ---------- */
@@ -794,21 +864,40 @@ document.getElementById('btnAddGoal').onclick = () => {
   renderGoals(); renderHome();
 };
 
+const PRJ_ST = { '進行中':'c-work', '已完成':'c-out', '暫停':'c-meet', '未開始':'c-gen' };
+
 function renderPrjs(){
-  document.getElementById('prjCnt').textContent = `共 ${ST.projects.length} 項`;
-  document.getElementById('prjList').innerHTML = ST.projects.length
-    ? ST.projects.map(p => {
+  const list = allProjects();
+  const mdN = MD_PROJECTS.length;
+  document.getElementById('prjCnt').textContent = mdN
+    ? `${F_PRJ} ${mdN} 項 · 本機 ${ST.projects.length} 項`
+    : `共 ${ST.projects.length} 項${dirHandle ? '' : '（未連結資料夾）'}`;
+  document.getElementById('prjSrc').textContent = prjMdInfo || '未連結資料夾，只顯示本機自訂專案';
+
+  document.getElementById('prjList').innerHTML = list.length
+    ? list.map(p => {
         const cls = p.pct >= 100 ? 'ok' : p.pct >= 50 ? '' : p.pct > 0 ? 'warn' : 'bad';
-        return `<div class="prj" data-id="${p.id}">
+        const isMd = p.src === 'md';
+        const logs = (p.logs || []).slice(0,3);
+        return `<div class="prj" data-id="${p.id}" data-src="${p.src}">
           <div class="ph">
-            <span class="pn">${p.url ? `<a href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.name)}</a>` : esc(p.name)}</span>
+            <span class="pn">
+              ${isMd ? `<span class="chip ${PRJ_ST[p.status] || 'c-gen'}" style="margin-right:6px">${esc(p.status || '專案')}</span>` : ''}
+              ${p.url ? `<a href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.name)}</a>` : esc(p.name)}
+            </span>
             <span class="pp">
-              <input type="range" min="0" max="100" step="5" value="${p.pct}" style="width:96px;vertical-align:middle">
-              <b style="min-width:38px;display:inline-block;text-align:right">${p.pct}%</b>
-              <button class="x" style="border:0;background:transparent;color:var(--ink-3);font-size:15px;cursor:pointer">×</button>
+              ${isMd
+                ? `<b style="min-width:38px;display:inline-block;text-align:right">${p.pct}%</b>`
+                : `<input type="range" min="0" max="100" step="5" value="${p.pct}" style="width:96px;vertical-align:middle">
+                   <b style="min-width:38px;display:inline-block;text-align:right">${p.pct}%</b>
+                   <button class="x" style="border:0;background:transparent;color:var(--ink-3);font-size:15px;cursor:pointer">×</button>`}
             </span>
           </div>
           <div class="bar ${cls}"><i style="width:${p.pct}%"></i></div>
+          ${logs.length ? `<div style="margin-top:7px;font-size:12px;line-height:1.7;color:var(--ink-2)">
+            ${logs.map(l => `<div style="display:flex;gap:7px"><span style="color:var(--ink-3);flex-shrink:0;font-variant-numeric:tabular-nums">${esc(l.date || '　')}</span><span>${esc(l.text)}</span></div>`).join('')}
+            ${p.logs.length > 3 ? `<div style="color:var(--ink-3);margin-top:2px">另有 ${p.logs.length-3} 筆進展</div>` : ''}
+          </div>` : ''}
         </div>`;
       }).join('')
     : '<div class="empty">還沒有專案</div>';
@@ -892,13 +981,16 @@ function renderHome(){
     ? ST.goals.slice(0,3).map(g => `<div class="goal"><div class="gt">${esc(g.title)}</div>${g.desc ? `<div class="gd">${esc(g.desc)}</div>` : ''}</div>`).join('')
     : '<div class="empty">還沒設定長期目標，去「目標與專案」新增</div>';
 
-  /* 專案 */
-  document.getElementById('homePrjCnt').textContent = `共 ${ST.projects.length} 項`;
-  document.getElementById('homePrjs').innerHTML = ST.projects.length
-    ? ST.projects.slice(0,5).map(p => {
+  /* 專案（projects.md ＋ 本機自訂） */
+  const prjs = allProjects();
+  document.getElementById('homePrjCnt').textContent = `共 ${prjs.length} 項`;
+  document.getElementById('homePrjs').innerHTML = prjs.length
+    ? prjs.slice(0,5).map(p => {
         const cls = p.pct >= 100 ? 'ok' : p.pct >= 50 ? '' : p.pct > 0 ? 'warn' : 'bad';
+        const last = (p.logs || [])[0];
         return `<div class="prj"><div class="ph"><span class="pn">${esc(p.name)}</span><span class="pp">${p.pct}%</span></div>
-          <div class="bar ${cls}"><i style="width:${p.pct}%"></i></div></div>`;
+          <div class="bar ${cls}"><i style="width:${p.pct}%"></i></div>
+          ${last ? `<div style="font-size:11.5px;color:var(--ink-3);margin-top:4px">${esc(last.date)} ${esc(last.text)}</div>` : ''}</div>`;
       }).join('')
     : '<div class="empty">還沒有專案</div>';
 }
@@ -939,9 +1031,13 @@ function buildHTMLReport(){
     return `<span class="st st-todo">${d} 天後</span>`;
   };
 
-  /* ── 卡片頁：長期目標＋專案，每頁 4 張 ── */
+  /* ── 卡片頁：長期目標＋專案（projects.md ＋本機），每頁 4 張 ── */
+  const prjList = allProjects();
   const cards = ST.goals.map(g => ({ kind:'goal', title:g.title, desc:g.desc||'', pct:null, bar:'#a97e2e' }))
-    .concat(ST.projects.map(p => ({ kind:'prj', title:p.name, desc:p.url||'', pct:p.pct, bar:'#2563eb' })));
+    .concat(prjList.map(p => ({
+      kind:'prj', title:p.name, desc:p.url||'', pct:p.pct, bar:'#2563eb',
+      md: p.src === 'md', status: p.status || '', logs: p.logs || []
+    })));
   const cardPages = [];
   for (let i = 0; i < cards.length; i += 4) cardPages.push(cards.slice(i, i+4));
 
@@ -1073,11 +1169,12 @@ function buildHTMLReport(){
 
     if (pg.key === 'card'){
       const list = cardPages[pg.idx];
-      const gCnt = ST.goals.length, pCnt = ST.projects.length;
-      const avg = pCnt ? Math.round(ST.projects.reduce((a,p)=>a+p.pct,0)/pCnt) : null;
+      const gCnt = ST.goals.length, pCnt = prjList.length;
+      const avg = pCnt ? Math.round(prjList.reduce((a,p)=>a+p.pct,0)/pCnt) : null;
       L.push(`<div class="slide-header"><div><div class="eyebrow">目標與專案 · Goals</div><h2 class="slide-title">長期目標與專案進度${cardPages.length>1?`（${pg.idx+1}/${cardPages.length}）`:''}</h2></div><span class="page-tag">${pgTag(n)}</span></div>`);
       L.push('<div class="content-area">');
-      L.push(`<div style="font-size:12px;color:#8a857c;margin-bottom:10px;">長期目標 ${gCnt} 項　<span style="color:#2563eb;font-weight:700;">● 專案 ${pCnt} 項</span>${avg!==null?`　平均進度 ${avg}%`:''}　｜　資料來源：個人工作台（本機）</div>`);
+      const mdN2 = MD_PROJECTS.length;
+      L.push(`<div style="font-size:12px;color:#8a857c;margin-bottom:10px;">長期目標 ${gCnt} 項　<span style="color:#2563eb;font-weight:700;">● 專案 ${pCnt} 項</span>${avg!==null?`　平均進度 ${avg}%`:''}　｜　資料來源：${mdN2?`${F_PRJ} ${mdN2} 項＋本機 ${ST.projects.length} 項`:'本機自訂'}</div>`);
       L.push('<div style="flex:1;min-height:0;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:12px;">');
       for (const c of list){
         const isGoal = c.kind === 'goal';
@@ -1087,7 +1184,8 @@ function buildHTMLReport(){
         card += '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">';
         card += `<div style="font-size:14px;font-weight:700;color:#1e293b;" contenteditable="true">${esc(c.title)}</div>`;
         card += '<div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">';
-        card += `<span style="padding:2px 10px;border-radius:10px;font-size:11px;font-weight:700;background:${isGoal?'#f2e9d6':'#e6f1fb'};color:${isGoal?'#7e5d1d':'#185fa5'};">${isGoal?'長期目標':'專案'}</span>`;
+        const cLb = isGoal ? '長期目標' : (c.status || '專案');
+        card += `<span style="padding:2px 10px;border-radius:10px;font-size:11px;font-weight:700;background:${isGoal?'#f2e9d6':'#e6f1fb'};color:${isGoal?'#7e5d1d':'#185fa5'};">${esc(cLb)}</span>`;
         card += `<button class="del-btn" title="從報告移除此卡" onclick="this.closest('[data-card]').remove()" style="width:20px;height:20px;line-height:1;padding:0;border:none;border-radius:50%;background:#fee2e2;color:#dc2626;font-size:14px;font-weight:700;cursor:pointer;">&times;</button>`;
         card += '</div></div>';
         if (!isGoal){
@@ -1100,6 +1198,15 @@ function buildHTMLReport(){
           card += isUrl
             ? `<div style="font-size:12px;line-height:1.6;margin-top:${isGoal?'8px':'0'};"><a href="${esc(c.desc)}" target="_blank" rel="noopener" style="color:#2563eb;">開啟相關連結</a></div>`
             : `<div style="font-size:12px;line-height:1.7;color:#334155;margin-top:${isGoal?'8px':'0'};white-space:pre-wrap;" contenteditable="true">${esc(c.desc)}</div>`;
+        }
+        /* 進展明細：每行可就地編輯，只改報告不動 projects.md */
+        for (const l of (c.logs || []).slice(0,4)){
+          card += '<div style="display:flex;gap:6px;font-size:12px;line-height:1.6;color:#334155;align-items:flex-start;margin-top:3px;">'
+            + `<span style="flex-shrink:0;color:#94a3b8;font-variant-numeric:tabular-nums;">${esc(l.date || '　')}</span>`
+            + `<span contenteditable="true" style="flex:1;outline:none;">${esc(l.text)}</span></div>`;
+        }
+        if ((c.logs || []).length > 4){
+          card += `<div style="font-size:11px;color:#94a3b8;margin-top:3px;">另有 ${c.logs.length-4} 筆進展</div>`;
         }
         card += '</div>';
         L.push(card);
@@ -1270,18 +1377,21 @@ function renderAllLocal(){
   const n = new Date();
   calY = n.getFullYear(); calM = n.getMonth();
 
-  document.getElementById('btnLinkFile').onclick = linkFile;
+  document.getElementById('btnLinkFile').onclick = linkDir;
+  document.getElementById('btnReloadPrj').onclick = reloadProjects;
   document.getElementById('btnUnlinkFile').onclick = async () => {
-    if (!confirm('改用本機儲存？資料檔會保留在 OneDrive，之後隨時可以重新連結。')) return;
-    fileHandle = null;
-    await idbSet('fileHandle', null);
+    if (!confirm('改用本機儲存？資料夾裡的檔案會保留，之後隨時可以重新連結。')) return;
+    dirHandle = null;
+    MD_PROJECTS = []; prjMdInfo = '';
+    await idbSet('dirHandle', null);
     document.getElementById('fileWho').style.display = 'none';
     syncUI();
+    renderAllLocal();
     fileSt('已改用本機儲存');
   };
 
-  if (!FS_OK) fileSt('這個瀏覽器不支援檔案同步（需 Edge/Chrome + https），資料存本機');
-  else await restoreFile();
+  if (!FS_OK) fileSt('這個瀏覽器不支援資料夾同步（需桌面版 Edge/Chrome + https），資料存本機');
+  else await restoreDir();
 
   syncUI();
   renderAllLocal();
