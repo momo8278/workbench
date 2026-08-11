@@ -72,6 +72,7 @@ a:hover{text-decoration:underline}
 .side-foot .hint{font-size:11px;color:var(--ink-3);line-height:1.5}
 
 .main{flex:1;min-width:0;padding:26px 30px 60px;max-width:1240px}
+.main.wide{max-width:1860px}   /* 專案進度頁用滿版，卡片才排得下 4 欄 */
 .page{display:none}
 .page.on{display:block}
 
@@ -222,9 +223,16 @@ table.rpt tr.sum td{font-weight:700;border-top:1px solid var(--line);background:
 .prj-toolbar input:focus{outline:0;border-color:var(--blue)}
 .prj-counts{display:flex;gap:18px;flex-wrap:wrap;margin-bottom:14px;font-size:12.5px;color:var(--ink-3)}
 .prj-counts b{font-size:16px;font-weight:700;color:var(--ink);margin-right:4px;font-variant-numeric:tabular-nums}
-.prj-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px;align-items:start}
-.pcard{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:15px 16px;box-shadow:var(--shadow);height:270px;display:flex;flex-direction:column;overflow:hidden}
+.prj-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(370px,1fr));gap:14px;align-items:start}
+.pcard{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:15px 16px;box-shadow:var(--shadow);height:300px;display:flex;flex-direction:column;overflow:hidden}
 .pcard.expanded{height:auto}
+/* 拖曳排序 */
+.pcard{cursor:grab}
+.pcard:active{cursor:grabbing}
+.pcard.dragging{opacity:.4}
+.pcard.drop-before{box-shadow:-4px 0 0 var(--blue), var(--shadow)}
+.pcard.drop-after{box-shadow:4px 0 0 var(--blue), var(--shadow)}
+.pcard.editing{cursor:default}
 .pcard .pt{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px}
 .pcard .ptt{font-size:14.5px;font-weight:700;line-height:1.4}
 .pcard .pbar-row{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-shrink:0}
@@ -239,8 +247,18 @@ table.rpt tr.sum td{font-weight:700;border-top:1px solid var(--line);background:
 .pcard .pdet::after{content:'';position:absolute;left:0;right:0;bottom:0;height:24px;background:linear-gradient(transparent,var(--card))}
 .pcard.expanded .pdet::after{display:none}
 .pcard .pdet-h{font-size:11px;font-weight:700;color:var(--ink-3);margin-bottom:6px;letter-spacing:.03em;display:flex;justify-content:space-between;align-items:center}
-.pcard .pdi{font-size:12px;color:var(--ink-2);line-height:1.55;padding:3px 0;display:flex;gap:8px}
+.pcard .pdi{font-size:12px;color:var(--ink-2);line-height:1.55;padding:3px 0;display:flex;gap:8px;align-items:flex-start}
 .pcard .pdi .pdd{color:var(--ink-3);font-variant-numeric:tabular-nums;white-space:nowrap;flex-shrink:0}
+/* 收合時每筆進展只顯示兩行，展開才看全文 */
+.pcard .pdi .ptx{flex:1;min-width:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;cursor:text;border-radius:4px;padding:0 2px;margin:0 -2px}
+.pcard.expanded .pdi .ptx{display:block;-webkit-line-clamp:unset;overflow:visible}
+.pcard .pdi .ptx:hover{background:var(--line-soft)}
+.pcard .pdi .pdel{flex-shrink:0;border:0;background:transparent;color:transparent;font-size:12px;line-height:1;padding:0 3px;cursor:pointer;border-radius:4px}
+.pcard .pdi:hover .pdel{color:var(--ink-3)}
+.pcard .pdi .pdel:hover{background:var(--accent-soft);color:var(--accent)}
+.pcard .pdi textarea{flex:1;min-width:0;font:inherit;line-height:1.55;border:1px solid var(--blue);border-radius:6px;padding:5px 7px;resize:vertical;min-height:60px;background:var(--card);color:var(--ink)}
+.pcard .pdi textarea:focus{outline:0}
+.pdi-edit-hint{font-size:10.5px;color:var(--ink-3);padding:2px 0 0 8px}
 .pexp{flex-shrink:0;align-self:flex-start;border:0;background:transparent;color:var(--blue);font-size:11.5px;font-weight:600;cursor:pointer;padding:6px 0 0}
 .pst{font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px;white-space:nowrap;flex-shrink:0;border:0;cursor:pointer;font-family:inherit}
 .pst.s-go{background:var(--blue-soft);color:var(--blue)}
@@ -608,6 +626,37 @@ async function mdRemove(p){
   lines.splice(p.line, end - p.line + 1);
   await writeProjectsMd(lines.join('\n').replace(/\n{3,}/g,'\n\n'));
 }
+/* 改某一筆進展的文字：保留該行的縮排與日期，只換內容 */
+async function mdSetLog(lineNo, content){
+  await mdGuard();
+  const lines = MD_RAW.split(/\r?\n/);
+  const m = (lines[lineNo] || '').match(/^(\s{2,}-\s+)((?:\d{4}-\d{2}-\d{2})\s+)?/);
+  if (!m) throw new Error('找不到那一行，請按重讀檔案');
+  const txt = content.replace(/\s*\r?\n\s*/g, ' ').trim();
+  if (!txt) throw new Error('內容不能空白（要刪就按 ×）');
+  lines[lineNo] = m[1] + (m[2] || '') + txt;
+  await writeProjectsMd(lines.join('\n'));
+}
+async function mdRemoveLog(lineNo){
+  await mdGuard();
+  const lines = MD_RAW.split(/\r?\n/);
+  if (!/^\s{2,}-\s+/.test(lines[lineNo] || '')) throw new Error('找不到那一行，請按重讀檔案');
+  lines.splice(lineNo, 1);
+  await writeProjectsMd(lines.join('\n'));
+}
+/* 拖曳排序：整塊搬移。檔頭（第一個專案之前）原樣保留 */
+async function mdReorder(idsInNewOrder){
+  await mdGuard();
+  const lines = MD_RAW.split(/\r?\n/);
+  const firstLine = Math.min(...MD_PROJECTS.map(p => p.line));
+  const header = lines.slice(0, firstLine).join('\n').replace(/\s*$/, '');
+  const blocks = {};
+  for (const p of MD_PROJECTS){
+    blocks[p.id] = lines.slice(p.line, p.lastLine + 1).join('\n').replace(/\s*$/, '');
+  }
+  const body = idsInNewOrder.map(id => blocks[id]).filter(Boolean).join('\n\n');
+  await writeProjectsMd(header + '\n\n' + body + '\n');
+}
 
 /* 專案全部來自 projects.md */
 function allProjects(){ return MD_PROJECTS; }
@@ -786,6 +835,7 @@ const PAGES = ['home','todo','goal'];
 function go(p){
   document.querySelectorAll('.page').forEach(el => el.classList.toggle('on', el.id === 'p-'+p));
   document.querySelectorAll('.navbtn').forEach(b => b.classList.toggle('on', b.dataset.go === p));
+  document.querySelector('.main').classList.toggle('wide', p === 'goal');
   location.hash = p;
   window.scrollTo(0,0);
 }
@@ -999,10 +1049,13 @@ function renderPrjs(){
     const title = p.url ? `<a href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.name)}</a>` : esc(p.name);
     const detHtml = logs.length
       ? '<div class="pdet"><div class="pdet-h"><span>進展與明細</span><span>' + logs.length + ' 筆</span></div>'
-        + logs.map(l => `<div class="pdi"><span class="pdd">${esc(l.date || '')}</span><span>${esc(l.text)}</span></div>`).join('')
+        + logs.map(l => `<div class="pdi" data-line="${l.line}">`
+            + `<span class="pdd">${esc(l.date || '')}</span>`
+            + `<span class="ptx" title="點一下可編輯">${esc(l.text)}</span>`
+            + `<button class="pdel" title="刪這筆進展">×</button></div>`).join('')
         + '</div>'
       : '<div class="pdet"><div class="pdet-h"><span>進展與明細</span></div><div class="pdi" style="color:var(--ink-3)">還沒有進展，按 ＋ 加一筆</div></div>';
-    return `<div class="pcard" data-id="${p.id}">
+    return `<div class="pcard" draggable="true" data-id="${p.id}">
       <div class="pt">
         <div class="ptt">${title}</div>
         <div class="pacts">
@@ -1045,6 +1098,102 @@ function renderPrjs(){
     el.querySelector('button.del').onclick = () => {
       if (!confirm(`刪除「${p.name}」？連同它的 ${p.logs.length} 筆進展一起從 ${F_PRJ} 移除。`)) return;
       mdDo(() => mdRemove(p), '已刪除');
+    };
+    /* 進展：點文字就地編輯、× 刪除 */
+    el.querySelectorAll('.pdi[data-line]').forEach(row => {
+      const lineNo = Number(row.dataset.line);
+      row.querySelector('.pdel').onclick = e => {
+        e.stopPropagation();
+        if (!confirm('刪掉這一筆進展？')) return;
+        mdDo(() => mdRemoveLog(lineNo), '已刪除進展');
+      };
+      row.querySelector('.ptx').onclick = () => startLogEdit(row, lineNo, el);
+    });
+  });
+  bindCardDrag(box);
+}
+
+/* 就地編輯一筆進展：Enter 存、Shift+Enter 換行、Esc 取消 */
+function startLogEdit(row, lineNo, card){
+  if (row.querySelector('textarea')) return;
+  const span = row.querySelector('.ptx');
+  const orig = span.textContent;
+  const ta = document.createElement('textarea');
+  ta.value = orig;
+  const hint = document.createElement('div');
+  hint.className = 'pdi-edit-hint';
+  hint.textContent = 'Enter 儲存 · Shift+Enter 換行 · Esc 取消';
+  span.replaceWith(ta);
+  row.appendChild(hint);
+  card.classList.add('editing');
+  card.draggable = false;              // 編輯中不要誤觸拖曳
+  ta.focus();
+  ta.setSelectionRange(ta.value.length, ta.value.length);
+  ta.style.height = Math.min(240, ta.scrollHeight + 4) + 'px';
+
+  const finish = save => {
+    const val = ta.value;
+    card.draggable = true;
+    card.classList.remove('editing');
+    hint.remove();
+    if (save && val.trim() && val.trim() !== orig){
+      mdDo(() => mdSetLog(lineNo, val), '已改進展');
+    } else {
+      const back = document.createElement('span');
+      back.className = 'ptx';
+      back.title = '點一下可編輯';
+      back.textContent = orig;
+      ta.replaceWith(back);
+      back.onclick = () => startLogEdit(row, lineNo, card);
+    }
+  };
+  ta.onkeydown = e => {
+    if (e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); finish(true); }
+    if (e.key === 'Escape'){ e.preventDefault(); finish(false); }
+  };
+  ta.onblur = () => finish(true);
+}
+
+/* 卡片拖曳排序：放下後把整塊搬到新位置並寫回檔案 */
+function bindCardDrag(box){
+  let dragEl = null;
+  const clear = () => box.querySelectorAll('.pcard').forEach(c =>
+    c.classList.remove('drop-before','drop-after'));
+
+  box.querySelectorAll('.pcard').forEach(card => {
+    card.ondragstart = e => {
+      dragEl = card;
+      card.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', card.dataset.id);
+    };
+    card.ondragend = () => { card.classList.remove('dragging'); clear(); dragEl = null; };
+    card.ondragover = e => {
+      if (!dragEl || dragEl === card) return;
+      e.preventDefault();
+      const r = card.getBoundingClientRect();
+      const after = (e.clientX - r.left) > r.width / 2;
+      clear();
+      card.classList.add(after ? 'drop-after' : 'drop-before');
+    };
+    card.ondragleave = () => card.classList.remove('drop-before','drop-after');
+    card.ondrop = e => {
+      if (!dragEl || dragEl === card) return;
+      e.preventDefault();
+      const after = card.classList.contains('drop-after');
+      clear();
+      /* 以目前畫面順序為基礎重排；有篩選時只動可見的相對順序 */
+      const ids = Array.from(box.querySelectorAll('.pcard')).map(c => c.dataset.id);
+      const from = ids.indexOf(dragEl.dataset.id);
+      ids.splice(from, 1);
+      let to = ids.indexOf(card.dataset.id) + (after ? 1 : 0);
+      ids.splice(to, 0, dragEl.dataset.id);
+      /* 被篩選掉的專案維持原相對位置：用全量順序套用可見順序 */
+      const visible = new Set(ids);
+      const full = MD_PROJECTS.map(p => p.id);
+      let vi = 0;
+      const merged = full.map(id => visible.has(id) ? ids[vi++] : id);
+      mdDo(() => mdReorder(merged), '已調整順序');
     };
   });
 }
