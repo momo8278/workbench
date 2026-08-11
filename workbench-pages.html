@@ -227,9 +227,13 @@ table.rpt tr.sum td{font-weight:700;border-top:1px solid var(--line);background:
 .pcard.expanded{height:auto}
 .pcard .pt{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px}
 .pcard .ptt{font-size:14.5px;font-weight:700;line-height:1.4}
-.pcard .pbar-row{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-shrink:0}
-.pcard .pbar-row .bar{flex:1}
+.pcard .pbar-row{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-shrink:0}
 .pcard .pbar-row b{font-size:13px;font-variant-numeric:tabular-nums;min-width:40px;text-align:right}
+/* 拖曳條同時就是進度條：軌道用漸層填充，不再另外畫一條 */
+.pbar{-webkit-appearance:none;appearance:none;flex:1;min-width:0;height:7px;border-radius:20px;cursor:pointer;outline:0;margin:0}
+.pbar::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:#fff;border:2px solid var(--ink-3);box-shadow:0 1px 2px rgba(16,24,40,.25);cursor:pointer}
+.pbar:hover::-webkit-slider-thumb,.pbar:focus::-webkit-slider-thumb{border-color:var(--ink)}
+.pbar::-moz-range-thumb{width:13px;height:13px;border-radius:50%;background:#fff;border:2px solid var(--ink-3);cursor:pointer}
 .pcard .pdet{border-top:1px solid var(--line-soft);padding-top:10px;margin-top:2px;flex:1 1 auto;min-height:0;overflow:hidden;position:relative}
 .pcard.expanded .pdet{overflow:visible;flex:none}
 .pcard .pdet::after{content:'';position:absolute;left:0;right:0;bottom:0;height:24px;background:linear-gradient(transparent,var(--card))}
@@ -958,6 +962,12 @@ async function mdDo(fn, okMsg){
 const PST_CLS = s => s === '進行中' ? 's-go' : s === '暫停' ? 's-pause' : s === '已完成' ? 's-done' : 's-none';
 let prjFilter = '', prjQ = '';
 
+/* 進度條的軌道漸層：左邊已完成、右邊未完成，顏色隨進度 */
+function pbarStyle(pct){
+  const c = pct >= 100 ? 'var(--green)' : pct >= 50 ? 'var(--blue)' : pct > 0 ? 'var(--amber)' : 'var(--line-soft)';
+  return `background:linear-gradient(90deg,${c} 0 ${pct}%,var(--line-soft) ${pct}% 100%)`;
+}
+
 function renderPrjs(){
   const all = allProjects();
   const box = document.getElementById('prjList');
@@ -985,7 +995,6 @@ function renderPrjs(){
   }
 
   box.innerHTML = shown.map(p => {
-    const cls = p.pct >= 100 ? 'ok' : p.pct >= 50 ? '' : p.pct > 0 ? 'warn' : 'bad';
     const logs = p.logs || [];
     const title = p.url ? `<a href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.name)}</a>` : esc(p.name);
     const detHtml = logs.length
@@ -1005,10 +1014,9 @@ function renderPrjs(){
         </div>
       </div>
       <div class="pbar-row">
-        <input type="range" min="0" max="100" step="5" value="${p.pct}" style="flex:1;min-width:0">
+        <input type="range" class="pbar" min="0" max="100" step="5" value="${p.pct}" style="${pbarStyle(p.pct)}">
         <b>${p.pct}%</b>
       </div>
-      <div class="bar ${cls}" style="margin:-4px 0 10px"><i style="width:${Math.min(100,p.pct)}%"></i></div>
       ${detHtml}
       ${logs.length > 3 ? `<button class="pexp" data-n="${logs.length}">展開全部 (${logs.length})</button>` : ''}
     </div>`;
@@ -1022,10 +1030,12 @@ function renderPrjs(){
     const p = MD_PROJECTS.find(x => x.id === el.dataset.id);
     if (!p) return;
     /* 拖曳中只更新顯示，放手才寫檔，避免拖一次寫幾十遍 */
-    const rg = el.querySelector('input[type=range]');
+    const rg = el.querySelector('input.pbar');
     const lb = el.querySelector('.pbar-row b');
-    const bar = el.querySelector('.bar > i');
-    rg.oninput = () => { lb.textContent = rg.value + '%'; bar.style.width = rg.value + '%'; };
+    rg.oninput = () => {
+      lb.textContent = rg.value + '%';
+      rg.setAttribute('style', pbarStyle(Number(rg.value)));
+    };
     rg.onchange = () => mdDo(() => mdSetPct(p, Number(rg.value)), '已更新進度');
     el.querySelector('select.pst').onchange = e => mdDo(() => mdSetStatus(p, e.target.value), '已更新狀態');
     el.querySelector('button.log').onclick = () => {
