@@ -248,7 +248,7 @@ table.rpt tr.sum td{font-weight:700;border-top:1px solid var(--line);background:
     <button class="navbtn" data-go="todo">
       <svg viewBox="0 0 24 24"><path d="M9 5h11"/><path d="M9 12h11"/><path d="M9 19h11"/><path d="m3 5 2 2 2-3"/><path d="m3 12 2 2 2-3"/><path d="m3 19 2 2 2-3"/></svg>待辦與行事曆</button>
     <button class="navbtn" data-go="goal">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1"/></svg>目標與專案</button>
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1"/></svg>專案進度</button>
 
     <div class="side-foot">
       <button id="btnReport" style="border-color:var(--ink);color:var(--ink);font-weight:700">產出 HTML 週報</button>
@@ -256,7 +256,7 @@ table.rpt tr.sum td{font-weight:700;border-top:1px solid var(--line);background:
       <button id="btnExport">匯出資料 JSON</button>
       <button id="btnImport">匯入資料 JSON</button>
       <input type="file" id="fileImport" accept=".json" hidden>
-      <div class="hint" id="footHint">連結 OneDrive 的資料檔就能跨機同步；沒連結時只存這台瀏覽器。<br>← → 可換頁。</div>
+      <div class="hint" id="footHint">連結 OneDrive 資料夾就能跨機同步；沒連結時只存這台瀏覽器。<br>← → 可換頁。</div>
     </div>
   </nav>
 
@@ -268,11 +268,6 @@ table.rpt tr.sum td{font-weight:700;border-top:1px solid var(--line);background:
         <div class="hi" id="greet">你好</div>
         <div class="hs" id="today"></div>
         <div class="quote" id="heroSum"></div>
-      </div>
-
-      <div class="card" style="margin-bottom:16px">
-        <h2>長期目標 <span class="r" id="homeGoalCnt"></span></h2>
-        <div id="homeGoals"></div>
       </div>
 
       <div class="grid g3">
@@ -357,39 +352,31 @@ table.rpt tr.sum td{font-weight:700;border-top:1px solid var(--line);background:
     <section class="page" id="p-goal">
       <div class="hd">
         <div>
-          <h1>目標與專案</h1>
-          <div class="dt">專案可填相關連結，點過去看細節</div>
+          <h1>專案進度</h1>
+          <div class="dt">你在這裡新增或改進度，都會寫進 projects.md；我也改同一個檔</div>
         </div>
       </div>
 
-      <div class="grid g2">
-        <div class="card">
-          <h2>長期目標 <span class="r" id="goalCnt"></span></h2>
-          <div id="goalList"></div>
-          <div class="frm">
-            <input type="text" id="glTitle" placeholder="目標（例：今年讀完 12 本書）">
-            <button class="btn pri" id="btnAddGoal">新增</button>
-          </div>
-          <div class="frm" style="border:0;padding-top:4px;margin-top:0">
-            <input type="text" id="glDesc" placeholder="補充說明（可留空）">
-          </div>
+      <div class="card">
+        <h2>專案進度 <span class="r" id="prjCnt"></span></h2>
+        <div style="font-size:11.5px;color:var(--ink-3);margin:-6px 0 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <span id="prjSrc"></span>
+          <button class="btn sm" id="btnReloadPrj" style="margin-left:auto">重讀檔案</button>
         </div>
-
-        <div class="card">
-          <h2>專案進度 <span class="r" id="prjCnt"></span></h2>
-          <div style="font-size:11.5px;color:var(--ink-3);margin:-6px 0 10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-            <span id="prjSrc"></span>
-            <button class="btn sm" id="btnReloadPrj" style="margin-left:auto">重讀 projects.md</button>
-          </div>
-          <div id="prjList"></div>
-          <div class="frm">
-            <input type="text" id="pjName" placeholder="自己加一個專案（不寫進 projects.md）">
-            <input type="number" id="pjPct" min="0" max="100" step="5" value="0" style="width:76px" title="進度 %">
-            <button class="btn pri" id="btnAddPrj">新增</button>
-          </div>
-          <div class="frm" style="border:0;padding-top:4px;margin-top:0">
-            <input type="text" id="pjUrl" placeholder="相關連結（可留空）">
-          </div>
+        <div id="prjList"></div>
+        <div class="frm">
+          <input type="text" id="pjName" placeholder="新增專案名稱">
+          <input type="number" id="pjPct" min="0" max="100" step="5" value="0" style="width:72px" title="進度 %">
+          <select id="pjStatus">
+            <option value="進行中">進行中</option>
+            <option value="未開始">未開始</option>
+            <option value="暫停">暫停</option>
+            <option value="已完成">已完成</option>
+          </select>
+          <button class="btn pri" id="btnAddPrj">新增</button>
+        </div>
+        <div class="frm" style="border:0;padding-top:4px;margin-top:0">
+          <input type="text" id="pjUrl" placeholder="相關連結（可留空）">
         </div>
       </div>
     </section>
@@ -410,8 +397,6 @@ table.rpt tr.sum td{font-weight:700;border-top:1px solid var(--line);background:
 const K = {
   todos:   'MJ_WB_TODOS',
   events:  'MJ_WB_EVENTS',
-  goals:   'MJ_WB_GOALS',
-  projects:'MJ_WB_PROJECTS',
 };
 const CAT = {
   work:{lb:'工作', cls:'c-work'},
@@ -420,7 +405,7 @@ const CAT = {
   out :{lb:'外出', cls:'c-out'},
 };
 
-let ST = { todos:[], events:[], goals:[], projects:[] };
+let ST = { todos:[], events:[] };
 let calY, calM;
 
 /* =========================================================
@@ -436,7 +421,8 @@ const F_PRJ  = 'projects.md';
 let dirHandle = null;
 let writeTimer = null;
 let lastWrite = '';
-let MD_PROJECTS = [];       // 從 projects.md 讀來的專案（唯讀）
+let MD_PROJECTS = [];       // 從 projects.md 解析出的專案
+let MD_RAW = '';            // projects.md 原文，寫回時以行為單位改
 let prjMdInfo = '';         // 顯示用的來源說明
 
 function fileSt(msg, isErr){
@@ -462,7 +448,8 @@ function syncUI(){
 function parseProjectsMd(txt){
   const out = [];
   const lines = txt.split(/\r?\n/);
-  for (const ln of lines){
+  for (let i = 0; i < lines.length; i++){
+    const ln = lines[i];
     if (/^\s*>/.test(ln) || /^\s*#/.test(ln)) continue;           // 引言與標題不算資料
     const top = ln.match(/^-\s+(\d{1,3})%\s+(.+)$/);
     if (top){
@@ -473,15 +460,18 @@ function parseProjectsMd(txt){
       rest = rest.replace(/#(\S+)/, (m,s) => { status = s; return ''; });
       out.push({
         id:'md-' + out.length,
-        name: rest.replace(/\s+\|/g,'').trim().replace(/\s{2,}/g,' ') || '(未命名)',
+        name: rest.trim().replace(/\s{2,}/g,' ') || '(未命名)',
         pct: Math.max(0, Math.min(100, Number(top[1]))),
-        status, date, url, logs:[], src:'md'
+        status, date, url, logs:[], src:'md',
+        line: i, lastLine: i          // 原始行號，供精準編輯用
       });
       continue;
     }
     const sub = ln.match(/^\s{2,}-\s+(?:(\d{4}-\d{2}-\d{2})\s+)?(.+)$/);
     if (sub && out.length){
-      out[out.length-1].logs.push({ date: sub[1] || '', text: sub[2].trim() });
+      const p = out[out.length-1];
+      p.logs.push({ date: sub[1] || '', text: sub[2].trim(), line: i });
+      p.lastLine = i;
     }
   }
   return out;
@@ -492,17 +482,87 @@ async function readProjectsMd(){
   try {
     const h = await dirHandle.getFileHandle(F_PRJ);
     const f = await h.getFile();
-    MD_PROJECTS = parseProjectsMd(await f.text());
+    MD_RAW = await f.text();
+    MD_PROJECTS = parseProjectsMd(MD_RAW);
     prjMdInfo = `${F_PRJ} · ${MD_PROJECTS.length} 項 · 檔案時間 ${new Date(f.lastModified).toLocaleString('zh-TW',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})}`;
   } catch(e){
+    MD_RAW = '';
     prjMdInfo = `資料夾裡沒有 ${F_PRJ}`;
   }
 }
 
-/* 專案 = projects.md（唯讀）＋ 本機自訂 */
-function allProjects(){
-  return MD_PROJECTS.concat(ST.projects.map(p => ({ ...p, src:'local', logs:[] })));
+/* =========================================================
+   寫 projects.md：一律行層級操作，不重新序列化整個檔案
+   ========================================================= */
+async function writeProjectsMd(txt){
+  const h = await dirHandle.getFileHandle(F_PRJ, { create:true });
+  const w = await h.createWritable();
+  await w.write(txt);
+  await w.close();
+  MD_RAW = txt;
+  MD_PROJECTS = parseProjectsMd(MD_RAW);
 }
+function mdLine(p){
+  const parts = [`- ${p.pct}% ${p.name}`];
+  if (p.status) parts.push(`#${p.status}`);
+  parts.push(`@${todayISO()}`);
+  if (p.url) parts.push(`<${p.url}>`);
+  return parts.join(' ');
+}
+/* 寫檔前先確認檔案沒被別人動過，避免蓋掉我剛寫的內容 */
+async function mdGuard(){
+  if (!dirHandle) throw new Error('尚未連結資料夾');
+  const h = await dirHandle.getFileHandle(F_PRJ);
+  const cur = await (await h.getFile()).text();
+  if (cur !== MD_RAW){
+    MD_RAW = cur;
+    MD_PROJECTS = parseProjectsMd(cur);
+    renderPrjs(); renderHome();
+    throw new Error('檔案已被改過，已重新載入，請再操作一次');
+  }
+}
+async function mdAddProject(name, pct, status, url){
+  await mdGuard();
+  let txt = MD_RAW.replace(/\s*$/, '');
+  txt += '\n\n' + mdLine({ name, pct, status, url }) + '\n';
+  await writeProjectsMd(txt);
+}
+async function mdSetPct(p, pct){
+  await mdGuard();
+  const lines = MD_RAW.split(/\r?\n/);
+  if (!/^-\s+\d{1,3}%/.test(lines[p.line] || '')) throw new Error('找不到那一行，請按重讀檔案');
+  lines[p.line] = lines[p.line]
+    .replace(/^-\s+\d{1,3}%/, `- ${pct}%`)
+    .replace(/@\d{4}-\d{2}-\d{2}/, '@' + todayISO());
+  await writeProjectsMd(lines.join('\n'));
+}
+async function mdSetStatus(p, status){
+  await mdGuard();
+  const lines = MD_RAW.split(/\r?\n/);
+  let ln = lines[p.line];
+  if (!/^-\s+\d{1,3}%/.test(ln || '')) throw new Error('找不到那一行，請按重讀檔案');
+  ln = /#\S+/.test(ln) ? ln.replace(/#\S+/, '#' + status) : ln.replace(/(\s*@\d{4}-\d{2}-\d{2})/, ' #' + status + '$1');
+  if (!/#\S+/.test(ln)) ln += ' #' + status;
+  lines[p.line] = ln.replace(/@\d{4}-\d{2}-\d{2}/, '@' + todayISO());
+  await writeProjectsMd(lines.join('\n'));
+}
+async function mdAddLog(p, text){
+  await mdGuard();
+  const lines = MD_RAW.split(/\r?\n/);
+  lines.splice(p.line + 1, 0, `  - ${todayISO()} ${text}`);   // 插在專案行下方＝最新在最上面
+  lines[p.line] = lines[p.line].replace(/@\d{4}-\d{2}-\d{2}/, '@' + todayISO());
+  await writeProjectsMd(lines.join('\n'));
+}
+async function mdRemove(p){
+  await mdGuard();
+  const lines = MD_RAW.split(/\r?\n/);
+  const end = p.lastLine;
+  lines.splice(p.line, end - p.line + 1);
+  await writeProjectsMd(lines.join('\n').replace(/\n{3,}/g,'\n\n'));
+}
+
+/* 專案全部來自 projects.md */
+function allProjects(){ return MD_PROJECTS; }
 
 /* handle 存 IndexedDB，下次開頁不必重選檔案（仍需一次點擊授權） */
 function idb(){
@@ -534,13 +594,13 @@ async function idbGet(k){
 function stateJson(){
   return JSON.stringify({
     _meta:{ app:'mj-workbench', version:1, savedAt:new Date().toISOString() },
-    todos:ST.todos, events:ST.events, goals:ST.goals, projects:ST.projects
+    todos:ST.todos, events:ST.events
   }, null, 2);
 }
 
 /* ---------- storage ---------- */
 function load(){
-  for (const k of ['todos','events','goals','projects']){
+  for (const k of ['todos','events']){
     try { ST[k] = JSON.parse(localStorage.getItem(K[k]) || '[]') || []; } catch(e){ ST[k] = []; }
   }
 }
@@ -549,7 +609,7 @@ function save(key){
   scheduleWrite();
 }
 function isEmptyState(){
-  return !ST.todos.length && !ST.events.length && !ST.goals.length && !ST.projects.length;
+  return !ST.todos.length && !ST.events.length;
 }
 
 async function writeDataNow(){
@@ -580,7 +640,7 @@ async function readDataJson(){
     const txt = (await (await h.getFile()).text()).trim();
     if (!txt) return false;
     const js = JSON.parse(txt);
-    for (const k of ['todos','events','goals','projects']){
+    for (const k of ['todos','events']){
       if (Array.isArray(js[k])){ ST[k] = js[k]; localStorage.setItem(K[k], JSON.stringify(ST[k])); }
     }
     lastWrite = stateJson();
@@ -836,61 +896,45 @@ document.getElementById('calNext').onclick = () => { calM++; if (calM > 11){ cal
 document.getElementById('calToday').onclick = () => { const n = new Date(); calY = n.getFullYear(); calM = n.getMonth(); renderCal(); };
 
 /* =========================================================
-   目標 / 專案
+   專案進度（讀寫 projects.md）
    ========================================================= */
-function renderGoals(){
-  document.getElementById('goalCnt').textContent = `共 ${ST.goals.length} 項`;
-  document.getElementById('goalList').innerHTML = ST.goals.length
-    ? ST.goals.map(g => `<div class="goal" data-id="${g.id}">
-        <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
-          <div><div class="gt">${esc(g.title)}</div>${g.desc ? `<div class="gd">${esc(g.desc)}</div>` : ''}</div>
-          <button class="x" style="border:0;background:transparent;color:var(--ink-3);font-size:15px;cursor:pointer">×</button>
-        </div></div>`).join('')
-    : '<div class="empty">還沒有長期目標</div>';
-  document.querySelectorAll('#goalList .goal .x').forEach(b => {
-    b.onclick = () => {
-      const id = b.closest('.goal').dataset.id;
-      ST.goals = ST.goals.filter(g => g.id !== id);
-      save('goals'); renderGoals(); renderHome();
-    };
-  });
-}
-document.getElementById('btnAddGoal').onclick = () => {
-  const t = document.getElementById('glTitle').value.trim();
-  if (!t) return;
-  ST.goals.push({ id:uid(), title:t, desc:document.getElementById('glDesc').value.trim() });
-  save('goals');
-  document.getElementById('glTitle').value = ''; document.getElementById('glDesc').value = '';
-  renderGoals(); renderHome();
-};
 
-const PRJ_ST = { '進行中':'c-work', '已完成':'c-out', '暫停':'c-meet', '未開始':'c-gen' };
+/* 任何寫檔動作都經過這裡：統一顯示結果、失敗不讓畫面與檔案不一致 */
+async function mdDo(fn, okMsg){
+  if (!dirHandle){ fileSt('要先連結資料夾才能改專案', true); return; }
+  try {
+    await fn();
+    renderPrjs(); renderHome();
+    fileSt(okMsg + ' ' + new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'}));
+  } catch(e){
+    fileSt(e.message, true);
+  }
+}
 
 function renderPrjs(){
   const list = allProjects();
-  const mdN = MD_PROJECTS.length;
-  document.getElementById('prjCnt').textContent = mdN
-    ? `${F_PRJ} ${mdN} 項 · 本機 ${ST.projects.length} 項`
-    : `共 ${ST.projects.length} 項${dirHandle ? '' : '（未連結資料夾）'}`;
-  document.getElementById('prjSrc').textContent = prjMdInfo || '未連結資料夾，只顯示本機自訂專案';
+  document.getElementById('prjCnt').textContent = dirHandle
+    ? `共 ${list.length} 項`
+    : '未連結資料夾';
+  document.getElementById('prjSrc').textContent = prjMdInfo || '連結資料夾後才能讀寫 ' + F_PRJ;
 
   document.getElementById('prjList').innerHTML = list.length
     ? list.map(p => {
         const cls = p.pct >= 100 ? 'ok' : p.pct >= 50 ? '' : p.pct > 0 ? 'warn' : 'bad';
-        const isMd = p.src === 'md';
         const logs = (p.logs || []).slice(0,3);
-        return `<div class="prj" data-id="${p.id}" data-src="${p.src}">
+        return `<div class="prj" data-id="${p.id}">
           <div class="ph">
             <span class="pn">
-              ${isMd ? `<span class="chip ${PRJ_ST[p.status] || 'c-gen'}" style="margin-right:6px">${esc(p.status || '專案')}</span>` : ''}
+              <select class="pj-st" style="border:0;background:transparent;font-size:11px;font-weight:700;color:var(--ink-2);margin-right:4px;cursor:pointer">
+                ${['進行中','未開始','暫停','已完成'].map(s => `<option value="${s}"${s===p.status?' selected':''}>${s}</option>`).join('')}
+              </select>
               ${p.url ? `<a href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.name)}</a>` : esc(p.name)}
             </span>
             <span class="pp">
-              ${isMd
-                ? `<b style="min-width:38px;display:inline-block;text-align:right">${p.pct}%</b>`
-                : `<input type="range" min="0" max="100" step="5" value="${p.pct}" style="width:96px;vertical-align:middle">
-                   <b style="min-width:38px;display:inline-block;text-align:right">${p.pct}%</b>
-                   <button class="x" style="border:0;background:transparent;color:var(--ink-3);font-size:15px;cursor:pointer">×</button>`}
+              <input type="range" min="0" max="100" step="5" value="${p.pct}" style="width:88px;vertical-align:middle">
+              <b style="min-width:38px;display:inline-block;text-align:right">${p.pct}%</b>
+              <button class="pj-log" title="加一筆進展" style="border:0;background:transparent;color:var(--ink-3);font-size:14px;cursor:pointer">＋</button>
+              <button class="x" title="刪除專案" style="border:0;background:transparent;color:var(--ink-3);font-size:15px;cursor:pointer">×</button>
             </span>
           </div>
           <div class="bar ${cls}"><i style="width:${p.pct}%"></i></div>
@@ -900,36 +944,40 @@ function renderPrjs(){
           </div>` : ''}
         </div>`;
       }).join('')
-    : '<div class="empty">還沒有專案</div>';
+    : `<div class="empty">${dirHandle ? '還沒有專案，用下面新增' : '連結資料夾後才會顯示專案'}</div>`;
+
   document.querySelectorAll('#prjList .prj').forEach(el => {
-    const id = el.dataset.id;
+    const p = MD_PROJECTS.find(x => x.id === el.dataset.id);
+    if (!p) return;
+    /* 拖曳中只更新顯示，放手才寫檔，避免拖一次寫幾十遍 */
     const rg = el.querySelector('input[type=range]');
-    if (rg) rg.oninput = () => {
-      const p = ST.projects.find(x => x.id === id);
-      if (!p) return;
-      p.pct = Number(rg.value);
-      save('projects'); renderPrjs(); renderHome();
+    const lb = el.querySelector('.pp b');
+    const bar = el.querySelector('.bar > i');
+    rg.oninput = () => { lb.textContent = rg.value + '%'; bar.style.width = rg.value + '%'; };
+    rg.onchange = () => mdDo(() => mdSetPct(p, Number(rg.value)), '已更新進度');
+    el.querySelector('.pj-st').onchange = e => mdDo(() => mdSetStatus(p, e.target.value), '已更新狀態');
+    el.querySelector('.pj-log').onclick = () => {
+      const t = prompt('這筆進展寫什麼？（會加上今天日期）');
+      if (t && t.trim()) mdDo(() => mdAddLog(p, t.trim()), '已加一筆進展');
     };
-    const x = el.querySelector('.x');
-    if (x) x.onclick = () => {
-      ST.projects = ST.projects.filter(p => p.id !== id);
-      save('projects'); renderPrjs(); renderHome();
+    el.querySelector('.x').onclick = () => {
+      if (!confirm(`刪除「${p.name}」？連同它的 ${p.logs.length} 筆進展一起從 ${F_PRJ} 移除。`)) return;
+      mdDo(() => mdRemove(p), '已刪除');
     };
   });
 }
 document.getElementById('btnAddPrj').onclick = () => {
-  const n = document.getElementById('pjName').value.trim();
+  const el = document.getElementById('pjName');
+  const n = el.value.trim();
   if (!n) return;
-  ST.projects.push({
-    id:uid(), name:n,
-    pct: Math.max(0, Math.min(100, Number(document.getElementById('pjPct').value) || 0)),
-    url: document.getElementById('pjUrl').value.trim()
+  const pct = Math.max(0, Math.min(100, Number(document.getElementById('pjPct').value) || 0));
+  const status = document.getElementById('pjStatus').value;
+  const url = document.getElementById('pjUrl').value.trim();
+  mdDo(() => mdAddProject(n, pct, status, url), '已新增專案').then(() => {
+    el.value = '';
+    document.getElementById('pjUrl').value = '';
+    document.getElementById('pjPct').value = 0;
   });
-  save('projects');
-  document.getElementById('pjName').value = '';
-  document.getElementById('pjUrl').value = '';
-  document.getElementById('pjPct').value = 0;
-  renderPrjs(); renderHome();
 };
 
 /* =========================================================
@@ -975,13 +1023,7 @@ function renderHome(){
       }).join('') + '</div>'
     : '<div class="empty">未來兩週沒有行程</div>';
 
-  /* 目標 */
-  document.getElementById('homeGoalCnt').textContent = `共 ${ST.goals.length} 項`;
-  document.getElementById('homeGoals').innerHTML = ST.goals.length
-    ? ST.goals.slice(0,3).map(g => `<div class="goal"><div class="gt">${esc(g.title)}</div>${g.desc ? `<div class="gd">${esc(g.desc)}</div>` : ''}</div>`).join('')
-    : '<div class="empty">還沒設定長期目標，去「目標與專案」新增</div>';
-
-  /* 專案（projects.md ＋ 本機自訂） */
+  /* 專案（projects.md） */
   const prjs = allProjects();
   document.getElementById('homePrjCnt').textContent = `共 ${prjs.length} 項`;
   document.getElementById('homePrjs').innerHTML = prjs.length
@@ -1031,13 +1073,12 @@ function buildHTMLReport(){
     return `<span class="st st-todo">${d} 天後</span>`;
   };
 
-  /* ── 卡片頁：長期目標＋專案（projects.md ＋本機），每頁 4 張 ── */
+  /* ── 卡片頁：專案（來自 projects.md），每頁 4 張 ── */
   const prjList = allProjects();
-  const cards = ST.goals.map(g => ({ kind:'goal', title:g.title, desc:g.desc||'', pct:null, bar:'#a97e2e' }))
-    .concat(prjList.map(p => ({
-      kind:'prj', title:p.name, desc:p.url||'', pct:p.pct, bar:'#2563eb',
-      md: p.src === 'md', status: p.status || '', logs: p.logs || []
-    })));
+  const cards = prjList.map(p => ({
+    kind:'prj', title:p.name, desc:p.url||'', pct:p.pct, bar:'#2563eb',
+    status: p.status || '', logs: p.logs || []
+  }));
   const cardPages = [];
   for (let i = 0; i < cards.length; i += 4) cardPages.push(cards.slice(i, i+4));
 
@@ -1045,7 +1086,7 @@ function buildHTMLReport(){
   const pages = [];
   if (ST.todos.length) pages.push({ key:'todo', tab:'待辦事項' });
   if (upcoming.length) pages.push({ key:'event', tab:'近期行程' });
-  cardPages.forEach((c,i) => pages.push({ key:'card', idx:i, tab: cardPages.length>1 ? `目標與專案 ${i+1}/${cardPages.length}` : '目標與專案' }));
+  cardPages.forEach((c,i) => pages.push({ key:'card', idx:i, tab: cardPages.length>1 ? `專案進度 ${i+1}/${cardPages.length}` : '專案進度' }));
   if (!pages.length) throw new Error('目前沒有待辦、行程或目標，沒東西可以產');
   const TOT = pages.length;
   const pgTag = (n, extra) => `${pad(n)} / ${pad(TOT)}${extra ? ' &nbsp;│&nbsp; ' + extra : ''}`;
@@ -1169,35 +1210,28 @@ function buildHTMLReport(){
 
     if (pg.key === 'card'){
       const list = cardPages[pg.idx];
-      const gCnt = ST.goals.length, pCnt = prjList.length;
+      const pCnt = prjList.length;
       const avg = pCnt ? Math.round(prjList.reduce((a,p)=>a+p.pct,0)/pCnt) : null;
-      L.push(`<div class="slide-header"><div><div class="eyebrow">目標與專案 · Goals</div><h2 class="slide-title">長期目標與專案進度${cardPages.length>1?`（${pg.idx+1}/${cardPages.length}）`:''}</h2></div><span class="page-tag">${pgTag(n)}</span></div>`);
+      const doneN = prjList.filter(p => p.pct >= 100).length;
+      L.push(`<div class="slide-header"><div><div class="eyebrow">專案進度 · Projects</div><h2 class="slide-title">專案進度${cardPages.length>1?`（${pg.idx+1}/${cardPages.length}）`:''}</h2></div><span class="page-tag">${pgTag(n)}</span></div>`);
       L.push('<div class="content-area">');
-      const mdN2 = MD_PROJECTS.length;
-      L.push(`<div style="font-size:12px;color:#8a857c;margin-bottom:10px;">長期目標 ${gCnt} 項　<span style="color:#2563eb;font-weight:700;">● 專案 ${pCnt} 項</span>${avg!==null?`　平均進度 ${avg}%`:''}　｜　資料來源：${mdN2?`${F_PRJ} ${mdN2} 項＋本機 ${ST.projects.length} 項`:'本機自訂'}</div>`);
+      L.push(`<div style="font-size:12px;color:#8a857c;margin-bottom:10px;"><span style="color:#2563eb;font-weight:700;">● 專案 ${pCnt} 項</span>${avg!==null?`　平均進度 ${avg}%`:''}${doneN?`　已完成 ${doneN} 項`:''}　｜　資料來源：${F_PRJ}</div>`);
       L.push('<div style="flex:1;min-height:0;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:12px;">');
       for (const c of list){
-        const isGoal = c.kind === 'goal';
         const barC = c.pct >= 100 ? '#16a34a' : c.bar;
-        const sideC = isGoal ? '#a97e2e' : '#2563eb';
-        let card = `<div data-card="1" style="border:1px solid #e8e2d6;border-left:4px solid ${sideC};border-radius:8px;padding:12px 16px;background:#fff;box-sizing:border-box;min-height:0;overflow:auto;">`;
+        const stC = { '進行中':['#e6f1fb','#185fa5'], '已完成':['#c6efce','#1a5c1a'], '暫停':['#f2e9d6','#7e5d1d'], '未開始':['#f1f5f9','#64748b'] }[c.status] || ['#e6f1fb','#185fa5'];
+        let card = `<div data-card="1" style="border:1px solid #e8e2d6;border-left:4px solid ${stC[1]};border-radius:8px;padding:12px 16px;background:#fff;box-sizing:border-box;min-height:0;overflow:auto;">`;
         card += '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">';
         card += `<div style="font-size:14px;font-weight:700;color:#1e293b;" contenteditable="true">${esc(c.title)}</div>`;
         card += '<div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">';
-        const cLb = isGoal ? '長期目標' : (c.status || '專案');
-        card += `<span style="padding:2px 10px;border-radius:10px;font-size:11px;font-weight:700;background:${isGoal?'#f2e9d6':'#e6f1fb'};color:${isGoal?'#7e5d1d':'#185fa5'};">${esc(cLb)}</span>`;
+        card += `<span style="padding:2px 10px;border-radius:10px;font-size:11px;font-weight:700;background:${stC[0]};color:${stC[1]};">${esc(c.status || '專案')}</span>`;
         card += `<button class="del-btn" title="從報告移除此卡" onclick="this.closest('[data-card]').remove()" style="width:20px;height:20px;line-height:1;padding:0;border:none;border-radius:50%;background:#fee2e2;color:#dc2626;font-size:14px;font-weight:700;cursor:pointer;">&times;</button>`;
         card += '</div></div>';
-        if (!isGoal){
-          card += '<div style="display:flex;align-items:center;gap:8px;margin:8px 0 6px;">';
-          card += `<div style="flex:1;height:7px;background:#eef2f7;border-radius:4px;overflow:hidden;"><div style="width:${c.pct}%;height:100%;background:${barC};border-radius:4px;"></div></div>`;
-          card += `<span style="font-size:12px;font-weight:700;min-width:32px;text-align:right;color:${barC};">${c.pct}%</span></div>`;
-        }
-        if (c.desc){
-          const isUrl = /^https?:\/\//i.test(c.desc);
-          card += isUrl
-            ? `<div style="font-size:12px;line-height:1.6;margin-top:${isGoal?'8px':'0'};"><a href="${esc(c.desc)}" target="_blank" rel="noopener" style="color:#2563eb;">開啟相關連結</a></div>`
-            : `<div style="font-size:12px;line-height:1.7;color:#334155;margin-top:${isGoal?'8px':'0'};white-space:pre-wrap;" contenteditable="true">${esc(c.desc)}</div>`;
+        card += '<div style="display:flex;align-items:center;gap:8px;margin:8px 0 6px;">';
+        card += `<div style="flex:1;height:7px;background:#eef2f7;border-radius:4px;overflow:hidden;"><div style="width:${c.pct}%;height:100%;background:${barC};border-radius:4px;"></div></div>`;
+        card += `<span style="font-size:12px;font-weight:700;min-width:32px;text-align:right;color:${barC};">${c.pct}%</span></div>`;
+        if (c.desc && /^https?:\/\//i.test(c.desc)){
+          card += `<div style="font-size:12px;line-height:1.6;"><a href="${esc(c.desc)}" target="_blank" rel="noopener" style="color:#2563eb;">開啟相關連結</a></div>`;
         }
         /* 進展明細：每行可就地編輯，只改報告不動 projects.md */
         for (const l of (c.logs || []).slice(0,4)){
@@ -1334,7 +1368,7 @@ document.getElementById('btnReport').onclick = () => {
 document.getElementById('btnExport').onclick = () => {
   const payload = {
     _meta:{ app:'mj-workbench', version:1, exportedAt:new Date().toISOString() },
-    todos:ST.todos, events:ST.events, goals:ST.goals, projects:ST.projects
+    todos:ST.todos, events:ST.events
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type:'application/json' });
   const a = document.createElement('a');
@@ -1359,13 +1393,13 @@ document.getElementById('fileImport').onchange = ev => {
   ev.target.value = '';
 };
 function applyData(js, persist){
-  for (const k of ['todos','events','goals','projects']){
+  for (const k of ['todos','events']){
     if (Array.isArray(js[k])) { ST[k] = js[k]; if (persist) save(k); }
   }
   renderAllLocal();
 }
 function renderAllLocal(){
-  renderTodos(); renderEvents(); renderCal(); renderGoals(); renderPrjs(); renderHome();
+  renderTodos(); renderEvents(); renderCal(); renderPrjs(); renderHome();
 }
 
 /* =========================================================
