@@ -216,6 +216,38 @@ table.rpt tr.sum td{font-weight:700;border-top:1px solid var(--line);background:
 .seg button{border:0;background:transparent;padding:5px 11px;font-size:12.5px;color:var(--ink-2);font-weight:500}
 .seg button.on{background:var(--ink);color:#fff;font-weight:700}
 
+/* ---------- 專案進度卡片（版型與外網版一致） ---------- */
+.prj-toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.prj-toolbar input[type=text]{flex:1;min-width:200px;border:1px solid var(--line);border-radius:8px;padding:7px 11px;background:var(--card)}
+.prj-toolbar input:focus{outline:0;border-color:var(--blue)}
+.prj-counts{display:flex;gap:18px;flex-wrap:wrap;margin-bottom:14px;font-size:12.5px;color:var(--ink-3)}
+.prj-counts b{font-size:16px;font-weight:700;color:var(--ink);margin-right:4px;font-variant-numeric:tabular-nums}
+.prj-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px;align-items:start}
+.pcard{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:15px 16px;box-shadow:var(--shadow);height:270px;display:flex;flex-direction:column;overflow:hidden}
+.pcard.expanded{height:auto}
+.pcard .pt{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px}
+.pcard .ptt{font-size:14.5px;font-weight:700;line-height:1.4}
+.pcard .pbar-row{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-shrink:0}
+.pcard .pbar-row .bar{flex:1}
+.pcard .pbar-row b{font-size:13px;font-variant-numeric:tabular-nums;min-width:40px;text-align:right}
+.pcard .pdet{border-top:1px solid var(--line-soft);padding-top:10px;margin-top:2px;flex:1 1 auto;min-height:0;overflow:hidden;position:relative}
+.pcard.expanded .pdet{overflow:visible;flex:none}
+.pcard .pdet::after{content:'';position:absolute;left:0;right:0;bottom:0;height:24px;background:linear-gradient(transparent,var(--card))}
+.pcard.expanded .pdet::after{display:none}
+.pcard .pdet-h{font-size:11px;font-weight:700;color:var(--ink-3);margin-bottom:6px;letter-spacing:.03em;display:flex;justify-content:space-between;align-items:center}
+.pcard .pdi{font-size:12px;color:var(--ink-2);line-height:1.55;padding:3px 0;display:flex;gap:8px}
+.pcard .pdi .pdd{color:var(--ink-3);font-variant-numeric:tabular-nums;white-space:nowrap;flex-shrink:0}
+.pexp{flex-shrink:0;align-self:flex-start;border:0;background:transparent;color:var(--blue);font-size:11.5px;font-weight:600;cursor:pointer;padding:6px 0 0}
+.pst{font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px;white-space:nowrap;flex-shrink:0;border:0;cursor:pointer;font-family:inherit}
+.pst.s-go{background:var(--blue-soft);color:var(--blue)}
+.pst.s-pause{background:var(--amber-soft);color:var(--amber)}
+.pst.s-done{background:var(--green-soft);color:var(--green)}
+.pst.s-none{background:#eef0f2;color:var(--ink-3)}
+.pcard .pacts{display:flex;gap:4px;flex-shrink:0}
+.pcard .pacts button{border:0;background:transparent;color:var(--ink-3);font-size:14px;line-height:1;padding:2px 5px;border-radius:5px;cursor:pointer}
+.pcard .pacts button:hover{background:var(--line-soft);color:var(--ink)}
+.pcard .pacts button.del:hover{background:var(--accent-soft);color:var(--accent)}
+
 /* ---------- 資料檔連結區 ---------- */
 .auth{padding:10px 8px 12px;border-bottom:1px solid var(--line-soft);margin-bottom:8px}
 .auth .who{font-size:11.5px;color:var(--green);font-weight:700;line-height:1.5;word-break:break-all}
@@ -357,15 +389,27 @@ table.rpt tr.sum td{font-weight:700;border-top:1px solid var(--line);background:
         </div>
       </div>
 
-      <div class="card">
-        <h2>專案進度 <span class="r" id="prjCnt"></span></h2>
-        <div style="font-size:11.5px;color:var(--ink-3);margin:-6px 0 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <span id="prjSrc"></span>
-          <button class="btn sm" id="btnReloadPrj" style="margin-left:auto">重讀檔案</button>
+      <div class="prj-toolbar">
+        <div class="seg" id="prjFilter">
+          <button class="on" data-s="">全部</button>
+          <button data-s="進行中">進行中</button>
+          <button data-s="未開始">未開始</button>
+          <button data-s="暫停">暫停</button>
+          <button data-s="已完成">已完成</button>
         </div>
-        <div id="prjList"></div>
-        <div class="frm">
-          <input type="text" id="pjName" placeholder="新增專案名稱">
+        <input type="text" id="prjSearch" placeholder="搜尋專案名稱、進展內容…">
+        <button class="btn sm" id="btnReloadPrj">重讀檔案</button>
+      </div>
+
+      <div class="prj-counts" id="prjCounts"></div>
+      <div style="font-size:11.5px;color:var(--ink-3);margin:-8px 0 14px" id="prjSrc"></div>
+
+      <div class="prj-cards" id="prjList"></div>
+
+      <div class="card" style="margin-top:16px">
+        <h2>新增專案 <span class="r" id="prjCnt"></span></h2>
+        <div class="frm" style="border:0;padding-top:0;margin-top:0">
+          <input type="text" id="pjName" placeholder="專案名稱">
           <input type="number" id="pjPct" min="0" max="100" step="5" value="0" style="width:72px" title="進度 %">
           <select id="pjStatus">
             <option value="進行中">進行中</option>
@@ -375,7 +419,7 @@ table.rpt tr.sum td{font-weight:700;border-top:1px solid var(--line);background:
           </select>
           <button class="btn pri" id="btnAddPrj">新增</button>
         </div>
-        <div class="frm" style="border:0;padding-top:4px;margin-top:0">
+        <div class="frm" style="border:0;padding-top:6px;margin-top:0">
           <input type="text" id="pjUrl" placeholder="相關連結（可留空）">
         </div>
       </div>
@@ -911,61 +955,94 @@ async function mdDo(fn, okMsg){
   }
 }
 
+const PST_CLS = s => s === '進行中' ? 's-go' : s === '暫停' ? 's-pause' : s === '已完成' ? 's-done' : 's-none';
+let prjFilter = '', prjQ = '';
+
 function renderPrjs(){
-  const list = allProjects();
-  document.getElementById('prjCnt').textContent = dirHandle
-    ? `共 ${list.length} 項`
-    : '未連結資料夾';
+  const all = allProjects();
+  const box = document.getElementById('prjList');
+
+  const cnt = s => all.filter(p => (p.status || '') === s).length;
+  document.getElementById('prjCounts').innerHTML =
+    `<span><b>${all.length}</b>專案總數</span>` +
+    `<span><b>${cnt('進行中')}</b>進行中</span>` +
+    `<span><b>${cnt('未開始')}</b>未開始</span>` +
+    `<span><b>${cnt('暫停')}</b>暫停</span>` +
+    `<span><b>${cnt('已完成')}</b>已完成</span>`;
+  document.getElementById('prjCnt').textContent = dirHandle ? '' : '未連結資料夾';
   document.getElementById('prjSrc').textContent = prjMdInfo || '連結資料夾後才能讀寫 ' + F_PRJ;
 
-  document.getElementById('prjList').innerHTML = list.length
-    ? list.map(p => {
-        const cls = p.pct >= 100 ? 'ok' : p.pct >= 50 ? '' : p.pct > 0 ? 'warn' : 'bad';
-        const logs = (p.logs || []).slice(0,3);
-        return `<div class="prj" data-id="${p.id}">
-          <div class="ph">
-            <span class="pn">
-              <select class="pj-st" style="border:0;background:transparent;font-size:11px;font-weight:700;color:var(--ink-2);margin-right:4px;cursor:pointer">
-                ${['進行中','未開始','暫停','已完成'].map(s => `<option value="${s}"${s===p.status?' selected':''}>${s}</option>`).join('')}
-              </select>
-              ${p.url ? `<a href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.name)}</a>` : esc(p.name)}
-            </span>
-            <span class="pp">
-              <input type="range" min="0" max="100" step="5" value="${p.pct}" style="width:88px;vertical-align:middle">
-              <b style="min-width:38px;display:inline-block;text-align:right">${p.pct}%</b>
-              <button class="pj-log" title="加一筆進展" style="border:0;background:transparent;color:var(--ink-3);font-size:14px;cursor:pointer">＋</button>
-              <button class="x" title="刪除專案" style="border:0;background:transparent;color:var(--ink-3);font-size:15px;cursor:pointer">×</button>
-            </span>
-          </div>
-          <div class="bar ${cls}"><i style="width:${p.pct}%"></i></div>
-          ${logs.length ? `<div style="margin-top:7px;font-size:12px;line-height:1.7;color:var(--ink-2)">
-            ${logs.map(l => `<div style="display:flex;gap:7px"><span style="color:var(--ink-3);flex-shrink:0;font-variant-numeric:tabular-nums">${esc(l.date || '　')}</span><span>${esc(l.text)}</span></div>`).join('')}
-            ${p.logs.length > 3 ? `<div style="color:var(--ink-3);margin-top:2px">另有 ${p.logs.length-3} 筆進展</div>` : ''}
-          </div>` : ''}
-        </div>`;
-      }).join('')
-    : `<div class="empty">${dirHandle ? '還沒有專案，用下面新增' : '連結資料夾後才會顯示專案'}</div>`;
+  let shown = all.filter(p => !prjFilter || (p.status || '') === prjFilter);
+  if (prjQ){
+    shown = shown.filter(p =>
+      (p.name + ' ' + (p.logs || []).map(l => l.text).join(' ')).toLowerCase().includes(prjQ));
+  }
+  if (!shown.length){
+    box.innerHTML = '<div class="empty">'
+      + (all.length ? '沒有符合的專案' : (dirHandle ? '還沒有專案，用下面新增' : '連結資料夾後才會顯示專案'))
+      + '</div>';
+    return;
+  }
 
-  document.querySelectorAll('#prjList .prj').forEach(el => {
+  box.innerHTML = shown.map(p => {
+    const cls = p.pct >= 100 ? 'ok' : p.pct >= 50 ? '' : p.pct > 0 ? 'warn' : 'bad';
+    const logs = p.logs || [];
+    const title = p.url ? `<a href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.name)}</a>` : esc(p.name);
+    const detHtml = logs.length
+      ? '<div class="pdet"><div class="pdet-h"><span>進展與明細</span><span>' + logs.length + ' 筆</span></div>'
+        + logs.map(l => `<div class="pdi"><span class="pdd">${esc(l.date || '')}</span><span>${esc(l.text)}</span></div>`).join('')
+        + '</div>'
+      : '<div class="pdet"><div class="pdet-h"><span>進展與明細</span></div><div class="pdi" style="color:var(--ink-3)">還沒有進展，按 ＋ 加一筆</div></div>';
+    return `<div class="pcard" data-id="${p.id}">
+      <div class="pt">
+        <div class="ptt">${title}</div>
+        <div class="pacts">
+          <select class="pst ${PST_CLS(p.status)}" title="改狀態">
+            ${['進行中','未開始','暫停','已完成'].map(s => `<option value="${s}"${s===p.status?' selected':''}>${s}</option>`).join('')}
+          </select>
+          <button class="log" title="加一筆進展">＋</button>
+          <button class="del" title="刪除專案">×</button>
+        </div>
+      </div>
+      <div class="pbar-row">
+        <input type="range" min="0" max="100" step="5" value="${p.pct}" style="flex:1;min-width:0">
+        <b>${p.pct}%</b>
+      </div>
+      <div class="bar ${cls}" style="margin:-4px 0 10px"><i style="width:${Math.min(100,p.pct)}%"></i></div>
+      ${detHtml}
+      ${logs.length > 3 ? `<button class="pexp" data-n="${logs.length}">展開全部 (${logs.length})</button>` : ''}
+    </div>`;
+  }).join('');
+
+  box.querySelectorAll('.pexp').forEach(btn => btn.onclick = () => {
+    const ex = btn.closest('.pcard').classList.toggle('expanded');
+    btn.textContent = ex ? '收合' : ('展開全部 (' + btn.dataset.n + ')');
+  });
+  box.querySelectorAll('.pcard').forEach(el => {
     const p = MD_PROJECTS.find(x => x.id === el.dataset.id);
     if (!p) return;
     /* 拖曳中只更新顯示，放手才寫檔，避免拖一次寫幾十遍 */
     const rg = el.querySelector('input[type=range]');
-    const lb = el.querySelector('.pp b');
+    const lb = el.querySelector('.pbar-row b');
     const bar = el.querySelector('.bar > i');
     rg.oninput = () => { lb.textContent = rg.value + '%'; bar.style.width = rg.value + '%'; };
     rg.onchange = () => mdDo(() => mdSetPct(p, Number(rg.value)), '已更新進度');
-    el.querySelector('.pj-st').onchange = e => mdDo(() => mdSetStatus(p, e.target.value), '已更新狀態');
-    el.querySelector('.pj-log').onclick = () => {
+    el.querySelector('select.pst').onchange = e => mdDo(() => mdSetStatus(p, e.target.value), '已更新狀態');
+    el.querySelector('button.log').onclick = () => {
       const t = prompt('這筆進展寫什麼？（會加上今天日期）');
       if (t && t.trim()) mdDo(() => mdAddLog(p, t.trim()), '已加一筆進展');
     };
-    el.querySelector('.x').onclick = () => {
+    el.querySelector('button.del').onclick = () => {
       if (!confirm(`刪除「${p.name}」？連同它的 ${p.logs.length} 筆進展一起從 ${F_PRJ} 移除。`)) return;
       mdDo(() => mdRemove(p), '已刪除');
     };
   });
 }
+document.querySelectorAll('#prjFilter button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('#prjFilter button').forEach(x => x.classList.toggle('on', x === b));
+  prjFilter = b.dataset.s; renderPrjs();
+});
+document.getElementById('prjSearch').oninput = e => { prjQ = e.target.value.trim().toLowerCase(); renderPrjs(); };
 document.getElementById('btnAddPrj').onclick = () => {
   const el = document.getElementById('pjName');
   const n = el.value.trim();
