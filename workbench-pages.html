@@ -190,23 +190,30 @@ table.rpt tr.sum td{font-weight:700;border-top:1px solid var(--line);background:
 .cal-hd .nav{display:flex;gap:6px}
 /* minmax(0,1fr)：沒有這個 0，格子裡的 nowrap 長行程會把該欄撐寬、整個月曆歪掉 */
 .cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
-.cal .wd{font-size:11px;color:var(--ink-3);text-align:center;padding:3px 0;font-weight:600;min-width:0}
+.cal .wd{font-size:12px;color:var(--ink-3);text-align:center;padding:5px 0 7px;font-weight:600;min-width:0}
 .cel{
-  min-height:70px;min-width:0;border:1px solid var(--line-soft);border-radius:9px;padding:5px 6px;
+  min-height:104px;min-width:0;border:1px solid var(--line-soft);border-radius:10px;padding:7px;
   background:var(--card);cursor:pointer;display:flex;flex-direction:column;gap:3px;overflow:hidden;
 }
 .cel:hover{border-color:var(--blue);background:var(--blue-soft)}
 .cel.pad{background:#fafbfc;cursor:default;border-color:transparent}
 .cel.pad:hover{background:#fafbfc}
-.cel.today{border-color:var(--accent);box-shadow:0 0 0 1.5px var(--accent-soft)}
-.cel .dn{font-size:11.5px;color:var(--ink-3);font-weight:600;color:var(--ink-3)}
-.cel.today .dn{color:var(--accent)}
+.cel.today{border-color:var(--accent)}
+.cel .dn{font-size:12px;color:var(--ink-2);font-weight:600;align-self:flex-start;min-width:21px;height:21px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%}
+.cel.today .dn{background:var(--accent);color:#fff}
 .cel .ev{
-  font-size:10.5px;border-radius:4px;padding:1px 4px;line-height:1.35;
+  font-size:11px;border-radius:5px;padding:2px 7px;line-height:1.4;font-weight:500;
+  border-left:3px solid transparent;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
-.cel .ev.t{background:var(--accent-soft);color:var(--accent)}
+.cel .ev .evtime{font-weight:700;margin-right:4px;font-variant-numeric:tabular-nums}
+.cel .ev.c-work{background:var(--blue-soft);color:var(--blue);border-left-color:var(--blue)}
+.cel .ev.c-self{background:var(--purple-soft);color:var(--purple);border-left-color:var(--purple)}
+.cel .ev.c-meet{background:var(--amber-soft);color:var(--amber);border-left-color:var(--amber)}
+.cel .ev.c-out{background:var(--green-soft);color:var(--green);border-left-color:var(--green)}
+.cel .ev.t{background:var(--accent-soft);color:var(--accent);border-left-color:var(--accent)}
 .cel .ev.done{opacity:.5;text-decoration:line-through}
+.cel .ev.c-gen{background:transparent;border-left-color:transparent;color:var(--ink-3);padding-left:4px}
 
 /* ---------- misc ---------- */
 .goal{padding:11px 0;border-bottom:1px solid var(--line-soft)}
@@ -326,7 +333,7 @@ table.rpt tr.sum td{font-weight:700;border-top:1px solid var(--line);background:
     <button class="navbtn on" data-go="home">
       <svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>首頁總覽</button>
     <button class="navbtn" data-go="todo">
-      <svg viewBox="0 0 24 24"><path d="M9 5h11"/><path d="M9 12h11"/><path d="M9 19h11"/><path d="m3 5 2 2 2-3"/><path d="m3 12 2 2 2-3"/><path d="m3 19 2 2 2-3"/></svg>待辦與行事曆</button>
+      <svg viewBox="0 0 24 24"><path d="M9 5h11"/><path d="M9 12h11"/><path d="M9 19h11"/><path d="m3 5 2 2 2-3"/><path d="m3 12 2 2 2-3"/><path d="m3 19 2 2 2-3"/></svg>待辦與行程</button>
     <button class="navbtn" data-go="goal">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1"/></svg>專案進度</button>
 
@@ -342,12 +349,54 @@ table.rpt tr.sum td{font-weight:700;border-top:1px solid var(--line);background:
 
   <main class="main">
 
+    <!-- 新增對話框（待辦／行程共用；置於 main 下、不隨分頁隱藏） -->
+    <div class="modal-mask" id="addModal" hidden>
+      <div class="modal">
+        <div class="modal-hd" id="amTitle">新增</div>
+        <div class="modal-body">
+          <label class="fld"><span>內容</span>
+            <input type="text" id="amText" placeholder="要做什麼？"></label>
+          <div class="fld-row">
+            <label class="fld"><span id="amDateLbl">日期</span>
+              <input type="date" id="amDate"></label>
+            <label class="fld" id="amTimeFld"><span>時間</span>
+              <input type="time" id="amTime"></label>
+            <label class="fld"><span>分類</span>
+              <select id="amCat">
+                <option value="work">工作</option>
+                <option value="self">個人</option>
+                <option value="meet">會議</option>
+                <option value="out">外出</option>
+              </select></label>
+          </div>
+        </div>
+        <div class="modal-foot">
+          <button class="btn" id="amCancel">取消</button>
+          <button class="btn pri" id="amOk">新增</button>
+        </div>
+      </div>
+    </div>
+
     <!-- ============ 首頁總覽 ============ -->
     <section class="page on" id="p-home">
       <div class="hero">
         <div class="hi" id="greet">你好</div>
         <div class="hs" id="today"></div>
         <div class="quote" id="heroSum"></div>
+      </div>
+
+      <!-- 行事曆（首頁置頂全寬） -->
+      <div class="card" style="margin-bottom:16px">
+        <div class="cal-hd">
+          <div class="mo" id="calMo"></div>
+          <div class="nav">
+            <button class="btn sm" id="calPrev">←</button>
+            <button class="btn sm" id="calToday">本月</button>
+            <button class="btn sm" id="calNext">→</button>
+          </div>
+        </div>
+        <div class="cal" id="calGrid"></div>
+        <div class="dt" style="margin-top:8px">點月曆上的日期可直接新增當天行程</div>
       </div>
 
       <div class="grid g3">
@@ -370,25 +419,12 @@ table.rpt tr.sum td{font-weight:700;border-top:1px solid var(--line);background:
     <section class="page" id="p-todo">
       <div class="hd">
         <div>
-          <h1>待辦與行事曆</h1>
-          <div class="dt">點月曆上的日期可直接新增當天行程</div>
+          <h1>待辦與行程</h1>
+          <div class="dt">新增、勾選完成、清除已完成；行事曆已移至首頁總覽</div>
         </div>
       </div>
 
-      <!-- 行事曆（全寬置頂） -->
-      <div class="card" style="margin-bottom:16px">
-        <div class="cal-hd">
-          <div class="mo" id="calMo"></div>
-          <div class="nav">
-            <button class="btn sm" id="calPrev">←</button>
-            <button class="btn sm" id="calToday">本月</button>
-            <button class="btn sm" id="calNext">→</button>
-          </div>
-        </div>
-        <div class="cal" id="calGrid"></div>
-      </div>
-
-      <!-- 下方兩欄：待辦事項 | 行程 -->
+      <!-- 待辦事項 | 行程 兩欄 -->
       <div class="grid g2">
         <div class="card">
           <h2>待辦事項 <span class="r" id="todoCnt"></span></h2>
@@ -408,34 +444,6 @@ table.rpt tr.sum td{font-weight:700;border-top:1px solid var(--line);background:
             <button class="btn sm ghost" id="btnClearEvDone" hidden style="margin-left:auto">清除已完成</button>
           </div>
           <div id="evList"></div>
-        </div>
-      </div>
-
-      <!-- 新增對話框（待辦／行程共用） -->
-      <div class="modal-mask" id="addModal" hidden>
-        <div class="modal">
-          <div class="modal-hd" id="amTitle">新增</div>
-          <div class="modal-body">
-            <label class="fld"><span>內容</span>
-              <input type="text" id="amText" placeholder="要做什麼？"></label>
-            <div class="fld-row">
-              <label class="fld"><span id="amDateLbl">日期</span>
-                <input type="date" id="amDate"></label>
-              <label class="fld" id="amTimeFld"><span>時間</span>
-                <input type="time" id="amTime"></label>
-              <label class="fld"><span>分類</span>
-                <select id="amCat">
-                  <option value="work">工作</option>
-                  <option value="self">個人</option>
-                  <option value="meet">會議</option>
-                  <option value="out">外出</option>
-                </select></label>
-            </div>
-          </div>
-          <div class="modal-foot">
-            <button class="btn" id="amCancel">取消</button>
-            <button class="btn pri" id="amOk">新增</button>
-          </div>
         </div>
       </div>
     </section>
@@ -873,7 +881,7 @@ const PAGES = ['home','todo','goal'];
 function go(p){
   document.querySelectorAll('.page').forEach(el => el.classList.toggle('on', el.id === 'p-'+p));
   document.querySelectorAll('.navbtn').forEach(b => b.classList.toggle('on', b.dataset.go === p));
-  document.querySelector('.main').classList.toggle('wide', p === 'goal' || p === 'todo');
+  document.querySelector('.main').classList.toggle('wide', p === 'goal' || p === 'home');
   location.hash = p;
   window.scrollTo(0,0);
 }
@@ -1063,7 +1071,7 @@ function renderCal(){
       <div class="dn">${d}</div>
       ${items.slice(0,3).map(x => {
         const c = CAT[x.cat] || CAT.work;
-        return `<div class="ev ${x.todo ? 't' : c.cls}${x.done ? ' done' : ''}" title="${esc(x.t)}">${x.done ? '✓ ' : (x.todo ? '待 ' : '')}${x.time ? x.time + ' ' : ''}${esc(x.t)}</div>`;
+        return `<div class="ev ${x.todo ? 't' : c.cls}${x.done ? ' done' : ''}" title="${esc(x.t)}">${x.done ? '✓ ' : (x.todo ? '待 ' : '')}${x.time ? `<span class="evtime">${x.time}</span>` : ''}${esc(x.t)}</div>`;
       }).join('')}
       ${items.length > 3 ? `<div class="ev c-gen">還有 ${items.length-3} 項</div>` : ''}
     </div>`;
