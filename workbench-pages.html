@@ -152,6 +152,7 @@ table.rpt tr.sum td{font-weight:700;border-top:1px solid var(--line);background:
 .done .tt{text-decoration:line-through;color:var(--ink-3)}
 .due-soon{color:var(--amber);font-weight:700}
 .due-over{color:var(--accent);font-weight:700}
+.done-dt{color:var(--ink-3);font-weight:500}
 
 /* ---------- forms ---------- */
 .frm{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid var(--line-soft)}
@@ -907,12 +908,16 @@ function dueBadge(due){
   const lb = d < 0 ? `逾期 ${-d} 天` : d === 0 ? '今天到期' : d === 1 ? '明天到期' : `${d} 天後`;
   return `<span class="${cls}">${due}　${lb}</span>`;
 }
+function doneDate(dstr){
+  if (!dstr) return '';
+  return `<span class="done-dt">${dstr}（${WD[new Date(dstr+'T00:00:00').getDay()]}）</span>`;
+}
 function todoRow(t){
   const c = CAT[t.cat] || CAT.work;
   return `<div class="row ${t.done ? 'done' : ''}" data-id="${t.id}">
     <input type="checkbox" class="ck" ${t.done ? 'checked' : ''}>
     <div class="bd"><div class="tt">${esc(t.text)}</div>
-      <div class="mt"><span class="chip ${c.cls}">${c.lb}</span>${dueBadge(t.due)}</div></div>
+      <div class="mt"><span class="chip ${c.cls}">${c.lb}</span>${t.done ? doneDate(t.due) : dueBadge(t.due)}</div></div>
     <button class="x" title="刪除">×</button></div>`;
 }
 function bindTodoRows(sel){
@@ -959,7 +964,7 @@ function renderEvents(){
         return `<div class="row ${e.done ? 'done' : ''}" data-id="${e.id}">
           <input type="checkbox" class="ck" ${e.done ? 'checked' : ''}>
           <div class="bd"><div class="tt">${esc(e.text)}</div>
-            <div class="mt"><span class="chip ${c.cls}">${c.lb}</span><span>${e.date}（${WD[new Date(e.date+'T00:00:00').getDay()]}）</span></div></div>
+            <div class="mt"><span class="chip ${c.cls}">${c.lb}</span>${e.done ? doneDate(e.date) : `<span>${e.date}（${WD[new Date(e.date+'T00:00:00').getDay()]}）</span>`}</div></div>
           <button class="x" title="刪除">×</button></div>`;
       }).join('') + '</div>'
     : '<div class="empty">還沒有行程</div>';
