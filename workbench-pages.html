@@ -256,9 +256,17 @@ table.rpt tr.sum td{font-weight:700;border-top:1px solid var(--line);background:
 .pcard .pdi .pdel{flex-shrink:0;border:0;background:transparent;color:transparent;font-size:12px;line-height:1;padding:0 3px;cursor:pointer;border-radius:4px}
 .pcard .pdi:hover .pdel{color:var(--ink-3)}
 .pcard .pdi .pdel:hover{background:var(--accent-soft);color:var(--accent)}
-.pcard .pdi textarea{flex:1;min-width:0;font:inherit;line-height:1.55;border:1px solid var(--blue);border-radius:6px;padding:5px 7px;resize:vertical;min-height:60px;background:var(--card);color:var(--ink)}
-.pcard .pdi textarea:focus{outline:0}
-.pdi-edit-hint{font-size:10.5px;color:var(--ink-3);padding:2px 0 0 8px}
+/* 編輯中的那一列改成上下堆疊，textarea 才有完整寬度 */
+.pcard .pdi.editing-row{display:block;padding:6px 0}
+.pcard .pdi.editing-row .pdd{display:inline-block;margin-bottom:4px}
+.pcard .pdi.editing-row .pdel{display:none}
+.pcard .pdi textarea{display:block;width:100%;box-sizing:border-box;font:inherit;font-size:12.5px;line-height:1.6;border:1px solid var(--blue);border-radius:6px;padding:7px 9px;resize:vertical;min-height:84px;background:var(--card);color:var(--ink)}
+.pcard .pdi textarea:focus{outline:0;box-shadow:0 0 0 2px var(--blue-soft)}
+.pdi-edit-hint{display:block;font-size:10.5px;color:var(--ink-3);padding:4px 0 0}
+/* 編輯中的卡片不受固定高度與裁切限制 */
+.pcard.editing{height:auto}
+.pcard.editing .pdet{overflow:visible;flex:none}
+.pcard.editing .pdet::after{display:none}
 .pexp{flex-shrink:0;align-self:flex-start;border:0;background:transparent;color:var(--blue);font-size:11.5px;font-weight:600;cursor:pointer;padding:6px 0 0}
 .pst{font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px;white-space:nowrap;flex-shrink:0;border:0;cursor:pointer;font-family:inherit}
 .pst.s-go{background:var(--blue-soft);color:var(--blue)}
@@ -1123,18 +1131,22 @@ function startLogEdit(row, lineNo, card){
   const hint = document.createElement('div');
   hint.className = 'pdi-edit-hint';
   hint.textContent = 'Enter 儲存 · Shift+Enter 換行 · Esc 取消';
-  span.replaceWith(ta);
-  row.appendChild(hint);
+  /* 先切版面再放 textarea，寬度才是對的，scrollHeight 也才算得準 */
+  row.classList.add('editing-row');
   card.classList.add('editing');
   card.draggable = false;              // 編輯中不要誤觸拖曳
+  span.replaceWith(ta);
+  row.appendChild(hint);
   ta.focus();
   ta.setSelectionRange(ta.value.length, ta.value.length);
-  ta.style.height = Math.min(240, ta.scrollHeight + 4) + 'px';
+  ta.style.height = 'auto';
+  ta.style.height = Math.max(84, Math.min(320, ta.scrollHeight + 6)) + 'px';
 
   const finish = save => {
     const val = ta.value;
     card.draggable = true;
     card.classList.remove('editing');
+    row.classList.remove('editing-row');
     hint.remove();
     if (save && val.trim() && val.trim() !== orig){
       mdDo(() => mdSetLog(lineNo, val), '已改進展');
