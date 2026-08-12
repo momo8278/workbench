@@ -153,6 +153,7 @@ table.rpt tr.sum td{font-weight:700;border-top:1px solid var(--line);background:
 .due-soon{color:var(--amber);font-weight:700}
 .due-over{color:var(--accent);font-weight:700}
 .done-dt{color:var(--ink-3);font-weight:500}
+.open-dt{color:var(--ink-2);font-weight:600}
 
 /* ---------- forms ---------- */
 .frm{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid var(--line-soft)}
@@ -904,7 +905,7 @@ function renderTodos(){
 function dueBadge(due){
   if (!due) return '';
   const d = daysBetween(due, todayISO());
-  const cls = d < 0 ? 'due-over' : d <= 2 ? 'due-soon' : '';
+  const cls = d < 0 ? 'due-over' : d <= 2 ? 'due-soon' : 'open-dt';
   const lb = d < 0 ? `逾期 ${-d} 天` : d === 0 ? '今天到期' : d === 1 ? '明天到期' : `${d} 天後`;
   return `<span class="${cls}">${due}　${lb}</span>`;
 }
@@ -964,7 +965,7 @@ function renderEvents(){
         return `<div class="row ${e.done ? 'done' : ''}" data-id="${e.id}">
           <input type="checkbox" class="ck" ${e.done ? 'checked' : ''}>
           <div class="bd"><div class="tt">${esc(e.text)}</div>
-            <div class="mt"><span class="chip ${c.cls}">${c.lb}</span>${e.done ? doneDate(e.date) : `<span>${e.date}（${WD[new Date(e.date+'T00:00:00').getDay()]}）</span>`}</div></div>
+            <div class="mt"><span class="chip ${c.cls}">${c.lb}</span>${e.done ? doneDate(e.date) : `<span class="open-dt">${e.date}（${WD[new Date(e.date+'T00:00:00').getDay()]}）</span>`}</div></div>
           <button class="x" title="刪除">×</button></div>`;
       }).join('') + '</div>'
     : '<div class="empty">還沒有行程</div>';
