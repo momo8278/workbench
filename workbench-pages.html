@@ -359,8 +359,6 @@ table.rpt tr.sum td{font-weight:700;border-top:1px solid var(--line);background:
           <div class="fld-row">
             <label class="fld"><span id="amDateLbl">日期</span>
               <input type="date" id="amDate"></label>
-            <label class="fld" id="amTimeFld"><span>時間</span>
-              <input type="time" id="amTime"></label>
             <label class="fld"><span>分類</span>
               <select id="amCat">
                 <option value="work">工作</option>
@@ -368,6 +366,12 @@ table.rpt tr.sum td{font-weight:700;border-top:1px solid var(--line);background:
                 <option value="meet">會議</option>
                 <option value="out">外出</option>
               </select></label>
+          </div>
+          <div class="fld-row" id="amTimeFld">
+            <label class="fld"><span>開始時間</span>
+              <input type="time" id="amTime"></label>
+            <label class="fld"><span>結束時間</span>
+              <input type="time" id="amTimeEnd"></label>
           </div>
         </div>
         <div class="modal-foot">
@@ -923,6 +927,10 @@ function doneDate(dstr){
   if (!dstr) return '';
   return `<span class="done-dt">${dstr}（${WD[new Date(dstr+'T00:00:00').getDay()]}）</span>`;
 }
+function evTime(e){
+  if (!e.time) return '';
+  return e.timeEnd ? `${e.time}–${e.timeEnd}` : e.time;
+}
 function todoRow(t){
   const c = CAT[t.cat] || CAT.work;
   return `<div class="row ${t.done ? 'done' : ''}" data-id="${t.id}">
@@ -975,7 +983,7 @@ function renderEvents(){
         return `<div class="row ${e.done ? 'done' : ''}" data-id="${e.id}">
           <input type="checkbox" class="ck" ${e.done ? 'checked' : ''}>
           <div class="bd"><div class="tt">${esc(e.text)}</div>
-            <div class="mt"><span class="chip ${c.cls}">${c.lb}</span><span class="${e.done ? 'done-dt' : 'open-dt'}">${e.date}（${WD[new Date(e.date+'T00:00:00').getDay()]}）${e.time ? ' ' + e.time : ''}</span></div></div>
+            <div class="mt"><span class="chip ${c.cls}">${c.lb}</span><span class="${e.done ? 'done-dt' : 'open-dt'}">${e.date}（${WD[new Date(e.date+'T00:00:00').getDay()]}）${evTime(e) ? ' ' + evTime(e) : ''}</span></div></div>
           <button class="x" title="刪除">×</button></div>`;
       }).join('') + '</div>'
     : '<div class="empty">還沒有行程</div>';
@@ -1018,6 +1026,7 @@ function openAdd(mode){
   document.getElementById('amText').value = '';
   document.getElementById('amDate').value = '';
   document.getElementById('amTime').value = '';
+  document.getElementById('amTimeEnd').value = '';
   document.getElementById('amCat').value = 'work';
   document.getElementById('addModal').hidden = false;
   setTimeout(() => document.getElementById('amText').focus(), 30);
@@ -1034,7 +1043,9 @@ function submitAdd(){
   } else {
     if (!date) { alert('行程日期要填'); return; }
     const time = document.getElementById('amTime').value;
-    ST.events.push({ id:uid(), text, date, time, cat, done:false });
+    const timeEnd = document.getElementById('amTimeEnd').value;
+    if (time && timeEnd && timeEnd < time) { alert('結束時間不能早於開始時間'); return; }
+    ST.events.push({ id:uid(), text, date, time, timeEnd, cat, done:false });
     save('events'); renderEvents(); renderCal(); renderHome();
   }
   closeAdd();
@@ -1055,7 +1066,7 @@ function renderCal(){
 
   const byDate = {};
   for (const e of ST.events){
-    (byDate[e.date] = byDate[e.date] || []).push({ t:e.text, cat:e.cat, todo:false, done:e.done, time:e.time });
+    (byDate[e.date] = byDate[e.date] || []).push({ t:e.text, cat:e.cat, todo:false, done:e.done, time:evTime(e) });
   }
   for (const t of ST.todos){
     if (t.due) (byDate[t.due] = byDate[t.due] || []).push({ t:t.text, cat:t.cat, todo:true, done:t.done });
@@ -1353,7 +1364,7 @@ function renderHome(){
         const d = daysBetween(e.date, todayISO());
         return `<div class="row${e.done ? ' done' : ''}"><div class="bd">
           <div class="tt">${esc(e.text)}</div>
-          <div class="mt"><span class="chip ${c.cls}">${c.lb}</span><span>${fmtMD(e.date)}（${WD[new Date(e.date+'T00:00:00').getDay()]}）${e.time ? ' ' + e.time : ''}${e.done ? ' · 已完成' : d === 0 ? ' · 今天' : d === 1 ? ' · 明天' : ''}</span></div>
+          <div class="mt"><span class="chip ${c.cls}">${c.lb}</span><span>${fmtMD(e.date)}（${WD[new Date(e.date+'T00:00:00').getDay()]}）${evTime(e) ? ' ' + evTime(e) : ''}${e.done ? ' · 已完成' : d === 0 ? ' · 今天' : d === 1 ? ' · 明天' : ''}</span></div>
         </div></div>`;
       }).join('') + '</div>'
     : '<div class="empty">未來兩週沒有行程</div>';
@@ -1540,7 +1551,7 @@ function buildHTMLReport(){
           : d === 1 ? ' <span class="st st-doing">明天</span>'
           : d < 0 ? ` <span class="st st-todo">${-d} 天前</span>` : '';
         const tdSty = e.done ? ' style="text-decoration:line-through;color:#8a857c"' : '';
-        L.push(`<tr><td class="tl">${e.date}${e.time ? ' ' + e.time : ''}</td><td>${w}</td><td>${c.lb}</td><td class="tl" contenteditable="true"${tdSty}>${esc(e.text)}${tagTx}</td></tr>`);
+        L.push(`<tr><td class="tl">${e.date}${evTime(e) ? ' ' + evTime(e) : ''}</td><td>${w}</td><td>${c.lb}</td><td class="tl" contenteditable="true"${tdSty}>${esc(e.text)}${tagTx}</td></tr>`);
       }
       L.push('</tbody></table>');
       if (upcoming.length > 16) L.push(`<p class="note">※ 前一週~未來兩週共 ${upcoming.length} 個行程，本頁列前 16 筆。</p>`);
