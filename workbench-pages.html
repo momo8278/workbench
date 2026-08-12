@@ -172,11 +172,12 @@ table.rpt tr.sum td{font-weight:700;border-top:1px solid var(--line);background:
 .cal-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
 .cal-hd .mo{font-size:15px;font-weight:700}
 .cal-hd .nav{display:flex;gap:6px}
-.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
-.cal .wd{font-size:11px;color:var(--ink-3);text-align:center;padding:3px 0;font-weight:600}
+/* minmax(0,1fr)：沒有這個 0，格子裡的 nowrap 長行程會把該欄撐寬、整個月曆歪掉 */
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
+.cal .wd{font-size:11px;color:var(--ink-3);text-align:center;padding:3px 0;font-weight:600;min-width:0}
 .cel{
-  min-height:70px;border:1px solid var(--line-soft);border-radius:9px;padding:5px 6px;
-  background:var(--card);cursor:pointer;display:flex;flex-direction:column;gap:3px;
+  min-height:70px;min-width:0;border:1px solid var(--line-soft);border-radius:9px;padding:5px 6px;
+  background:var(--card);cursor:pointer;display:flex;flex-direction:column;gap:3px;overflow:hidden;
 }
 .cel:hover{border-color:var(--blue);background:var(--blue-soft)}
 .cel.pad{background:#fafbfc;cursor:default;border-color:transparent}
