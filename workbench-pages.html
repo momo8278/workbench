@@ -358,9 +358,23 @@ table.rpt tr.sum td{font-weight:700;border-top:1px solid var(--line);background:
         </div>
       </div>
 
-      <div class="grid g2" style="margin-bottom:16px;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr)">
+      <!-- 行事曆（全寬置頂） -->
+      <div class="card" style="margin-bottom:16px">
+        <div class="cal-hd">
+          <div class="mo" id="calMo"></div>
+          <div class="nav">
+            <button class="btn sm" id="calPrev">←</button>
+            <button class="btn sm" id="calToday">本月</button>
+            <button class="btn sm" id="calNext">→</button>
+          </div>
+        </div>
+        <div class="cal" id="calGrid"></div>
+      </div>
+
+      <!-- 下方兩欄：待辦事項 | 行程 -->
+      <div class="grid g2">
         <div class="card">
-          <h2>待辦清單 <span class="r" id="todoCnt"></span></h2>
+          <h2>待辦事項 <span class="r" id="todoCnt"></span></h2>
           <div id="todoList"></div>
           <div class="frm">
             <input type="text" id="tdText" placeholder="要做什麼？">
@@ -382,31 +396,25 @@ table.rpt tr.sum td{font-weight:700;border-top:1px solid var(--line);background:
         </div>
 
         <div class="card">
-          <div class="cal-hd">
-            <div class="mo" id="calMo"></div>
-            <div class="nav">
-              <button class="btn sm" id="calPrev">←</button>
-              <button class="btn sm" id="calToday">本月</button>
-              <button class="btn sm" id="calNext">→</button>
-            </div>
+          <h2>行程 <span class="r" id="evCnt"></span></h2>
+          <div id="evList"></div>
+          <div class="frm">
+            <input type="text" id="evText" placeholder="行程內容">
+            <input type="date" id="evDate">
+            <select id="evCat">
+              <option value="work">工作</option>
+              <option value="self">個人</option>
+              <option value="meet">會議</option>
+              <option value="out">外出</option>
+            </select>
+            <button class="btn pri" id="btnAddEv">新增</button>
           </div>
-          <div class="cal" id="calGrid"></div>
-        </div>
-      </div>
-
-      <div class="card">
-        <h2>行程 <span class="r" id="evCnt"></span></h2>
-        <div id="evList"></div>
-        <div class="frm">
-          <input type="text" id="evText" placeholder="行程內容">
-          <input type="date" id="evDate">
-          <select id="evCat">
-            <option value="work">工作</option>
-            <option value="self">個人</option>
-            <option value="meet">會議</option>
-            <option value="out">外出</option>
-          </select>
-          <button class="btn pri" id="btnAddEv">新增</button>
+          <div class="frm" style="border:0;padding-top:4px;margin-top:4px">
+            <label style="font-size:12px;color:var(--ink-3);display:flex;align-items:center;gap:6px">
+              <input type="checkbox" id="evShowDone"> 顯示已完成
+            </label>
+            <button class="btn sm" id="btnClearEvDone" style="margin-left:auto">清除已完成</button>
+          </div>
         </div>
       </div>
     </section>
@@ -929,20 +937,31 @@ document.getElementById('btnClearDone').onclick = () => {
    行程 + 月曆
    ========================================================= */
 function renderEvents(){
-  const list = [...ST.events].sort((a,b) => a.date > b.date ? 1 : -1);
-  document.getElementById('evCnt').textContent = `共 ${list.length} 筆`;
+  const showDone = document.getElementById('evShowDone').checked;
+  const list = [...ST.events]
+    .filter(e => showDone || !e.done)
+    .sort((a,b) => (!!a.done - !!b.done) || (a.date > b.date ? 1 : -1));
+  const open = ST.events.filter(e => !e.done).length;
+  document.getElementById('evCnt').textContent = `未完成 ${open} / 共 ${ST.events.length}`;
   document.getElementById('evList').innerHTML = list.length
     ? '<div class="rows">' + list.map(e => {
         const c = CAT[e.cat] || CAT.work;
-        return `<div class="row" data-id="${e.id}">
+        return `<div class="row ${e.done ? 'done' : ''}" data-id="${e.id}">
+          <input type="checkbox" class="ck" ${e.done ? 'checked' : ''}>
           <div class="bd"><div class="tt">${esc(e.text)}</div>
             <div class="mt"><span class="chip ${c.cls}">${c.lb}</span><span>${e.date}（${WD[new Date(e.date+'T00:00:00').getDay()]}）</span></div></div>
           <button class="x" title="刪除">×</button></div>`;
       }).join('') + '</div>'
     : '<div class="empty">還沒有行程</div>';
-  document.querySelectorAll('#evList .row .x').forEach(b => {
-    b.onclick = () => {
-      const id = b.closest('.row').dataset.id;
+  document.querySelectorAll('#evList .row').forEach(r => {
+    const id = r.dataset.id;
+    const ck = r.querySelector('.ck');
+    if (ck) ck.onchange = () => {
+      const e = ST.events.find(x => x.id === id);
+      if (e) { e.done = ck.checked; save('events'); renderEvents(); renderCal(); renderHome(); }
+    };
+    const x = r.querySelector('.x');
+    if (x) x.onclick = () => {
       ST.events = ST.events.filter(e => e.id !== id);
       save('events'); renderEvents(); renderCal(); renderHome();
     };
@@ -950,12 +969,20 @@ function renderEvents(){
 }
 document.getElementById('btnAddEv').onclick = addEvent;
 document.getElementById('evText').addEventListener('keydown', e => { if (e.key === 'Enter') addEvent(); });
+document.getElementById('evShowDone').onchange = renderEvents;
+document.getElementById('btnClearEvDone').onclick = () => {
+  const n = ST.events.filter(e => e.done).length;
+  if (!n) return;
+  if (!confirm(`確定刪除 ${n} 筆已完成的行程？`)) return;
+  ST.events = ST.events.filter(e => !e.done);
+  save('events'); renderEvents(); renderCal(); renderHome();
+};
 function addEvent(){
   const el = document.getElementById('evText');
   const text = el.value.trim();
   const date = document.getElementById('evDate').value;
   if (!text || !date) { alert('行程內容與日期都要填'); return; }
-  ST.events.push({ id:uid(), text, date, cat:document.getElementById('evCat').value });
+  ST.events.push({ id:uid(), text, date, cat:document.getElementById('evCat').value, done:false });
   save('events');
   el.value = '';
   renderEvents(); renderCal(); renderHome();
@@ -969,6 +996,7 @@ function renderCal(){
 
   const byDate = {};
   for (const e of ST.events){
+    if (e.done) continue;
     (byDate[e.date] = byDate[e.date] || []).push({ t:e.text, cat:e.cat, todo:false });
   }
   for (const t of ST.todos){
@@ -1243,7 +1271,7 @@ function renderHome(){
   const over = open.filter(t => t.due && daysBetween(t.due, todayISO()) < 0).length;
   const soon = open.filter(t => t.due && daysBetween(t.due, todayISO()) >= 0 && daysBetween(t.due, todayISO()) <= 2).length;
   const upcoming = ST.events
-    .filter(e => { const d = daysBetween(e.date, todayISO()); return d >= 0 && d <= 14; })
+    .filter(e => { if (e.done) return false; const d = daysBetween(e.date, todayISO()); return d >= 0 && d <= 14; })
     .sort((a,b) => a.date > b.date ? 1 : -1);
   const parts = [];
   parts.push(open.length ? `待辦未完成 <b>${open.length}</b> 項` : '待辦都清完了');
@@ -1309,7 +1337,7 @@ function buildHTMLReport(){
   const overCnt = openTodos.filter(t => t.due && daysBetween(t.due, todayISO()) < 0).length;
   const soonCnt = openTodos.filter(t => { if(!t.due) return false; const d = daysBetween(t.due, todayISO()); return d >= 0 && d <= 2; }).length;
   const upcoming = ST.events
-    .filter(e => { const d = daysBetween(e.date, todayISO()); return d >= 0 && d <= 14; })
+    .filter(e => { if (e.done) return false; const d = daysBetween(e.date, todayISO()); return d >= 0 && d <= 14; })
     .sort((a,b) => a.date > b.date ? 1 : -1);
 
   const todoSt = t => {
