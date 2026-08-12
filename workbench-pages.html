@@ -869,7 +869,7 @@ const PAGES = ['home','todo','goal'];
 function go(p){
   document.querySelectorAll('.page').forEach(el => el.classList.toggle('on', el.id === 'p-'+p));
   document.querySelectorAll('.navbtn').forEach(b => b.classList.toggle('on', b.dataset.go === p));
-  document.querySelector('.main').classList.toggle('wide', p === 'goal');
+  document.querySelector('.main').classList.toggle('wide', p === 'goal' || p === 'todo');
   location.hash = p;
   window.scrollTo(0,0);
 }
@@ -1039,7 +1039,7 @@ function renderCal(){
     (byDate[e.date] = byDate[e.date] || []).push({ t:e.text, cat:e.cat, todo:false, done:e.done });
   }
   for (const t of ST.todos){
-    if (t.due && !t.done) (byDate[t.due] = byDate[t.due] || []).push({ t:t.text, cat:t.cat, todo:true });
+    if (t.due) (byDate[t.due] = byDate[t.due] || []).push({ t:t.text, cat:t.cat, todo:true, done:t.done });
   }
 
   let html = WD.map(w => `<div class="wd">${w}</div>`).join('');
@@ -1052,7 +1052,7 @@ function renderCal(){
       <div class="dn">${d}</div>
       ${items.slice(0,3).map(x => {
         const c = CAT[x.cat] || CAT.work;
-        return `<div class="ev ${x.todo ? 't' : c.cls}${x.done ? ' done' : ''}" title="${esc(x.t)}">${x.todo ? '待 ' : ''}${x.done ? '✓ ' : ''}${esc(x.t)}</div>`;
+        return `<div class="ev ${x.todo ? 't' : c.cls}${x.done ? ' done' : ''}" title="${esc(x.t)}">${x.done ? '✓ ' : (x.todo ? '待 ' : '')}${esc(x.t)}</div>`;
       }).join('')}
       ${items.length > 3 ? `<div class="ev c-gen">還有 ${items.length-3} 項</div>` : ''}
     </div>`;
