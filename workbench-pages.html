@@ -167,6 +167,20 @@ table.rpt tr.sum td{font-weight:700;border-top:1px solid var(--line);background:
 .btn.pri{background:var(--ink);border-color:var(--ink);color:#fff}
 .btn.pri:hover{background:#000}
 .btn.sm{padding:4px 9px;font-size:12px;font-weight:500}
+.btn.on{background:var(--blue-soft);border-color:var(--blue);color:var(--blue)}
+.btn.ghost{color:var(--ink-3);font-weight:500}
+.card-tools{display:flex;gap:7px;align-items:center;margin-bottom:12px}
+.modal-mask{position:fixed;inset:0;background:rgba(20,22,26,.42);display:flex;align-items:center;justify-content:center;z-index:60;padding:20px}
+.modal-mask[hidden]{display:none}
+.modal{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:0 24px 60px -12px rgba(20,22,26,.4);width:min(420px,100%);padding:18px 20px}
+.modal-hd{font-size:15px;font-weight:700;color:var(--ink);margin-bottom:14px}
+.modal-body{display:flex;flex-direction:column;gap:12px}
+.modal .fld{display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--ink-3);font-weight:600}
+.modal .fld-row{display:flex;gap:12px}
+.modal .fld-row .fld{flex:1}
+.modal .fld input,.modal .fld select{border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px;color:var(--ink);background:var(--card);width:100%}
+.modal .fld input:focus,.modal .fld select:focus{outline:0;border-color:var(--blue)}
+.modal-foot{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
 
 /* ---------- calendar ---------- */
 .cal-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
@@ -376,45 +390,47 @@ table.rpt tr.sum td{font-weight:700;border-top:1px solid var(--line);background:
       <div class="grid g2">
         <div class="card">
           <h2>待辦事項 <span class="r" id="todoCnt"></span></h2>
+          <div class="card-tools">
+            <button class="btn pri sm" id="btnAddTodo">＋ 新增</button>
+            <button class="btn sm" id="btnTdShowDone">顯示已完成</button>
+            <button class="btn sm ghost" id="btnClearDone" hidden style="margin-left:auto">清除已完成</button>
+          </div>
           <div id="todoList"></div>
-          <div class="frm">
-            <input type="text" id="tdText" placeholder="要做什麼？">
-            <input type="date" id="tdDue">
-            <select id="tdCat">
-              <option value="work">工作</option>
-              <option value="self">個人</option>
-              <option value="meet">會議</option>
-              <option value="out">外出</option>
-            </select>
-            <button class="btn pri" id="btnAddTodo">新增</button>
-          </div>
-          <div class="frm" style="border:0;padding-top:4px;margin-top:4px">
-            <label style="font-size:12px;color:var(--ink-3);display:flex;align-items:center;gap:6px">
-              <input type="checkbox" id="tdShowDone"> 顯示已完成
-            </label>
-            <button class="btn sm" id="btnClearDone" style="margin-left:auto">清除已完成</button>
-          </div>
         </div>
 
         <div class="card">
           <h2>行程 <span class="r" id="evCnt"></span></h2>
-          <div id="evList"></div>
-          <div class="frm">
-            <input type="text" id="evText" placeholder="行程內容">
-            <input type="date" id="evDate">
-            <select id="evCat">
-              <option value="work">工作</option>
-              <option value="self">個人</option>
-              <option value="meet">會議</option>
-              <option value="out">外出</option>
-            </select>
-            <button class="btn pri" id="btnAddEv">新增</button>
+          <div class="card-tools">
+            <button class="btn pri sm" id="btnAddEv">＋ 新增</button>
+            <button class="btn sm" id="btnEvShowDone">顯示已完成</button>
+            <button class="btn sm ghost" id="btnClearEvDone" hidden style="margin-left:auto">清除已完成</button>
           </div>
-          <div class="frm" style="border:0;padding-top:4px;margin-top:4px">
-            <label style="font-size:12px;color:var(--ink-3);display:flex;align-items:center;gap:6px">
-              <input type="checkbox" id="evShowDone"> 顯示已完成
-            </label>
-            <button class="btn sm" id="btnClearEvDone" style="margin-left:auto">清除已完成</button>
+          <div id="evList"></div>
+        </div>
+      </div>
+
+      <!-- 新增對話框（待辦／行程共用） -->
+      <div class="modal-mask" id="addModal" hidden>
+        <div class="modal">
+          <div class="modal-hd" id="amTitle">新增</div>
+          <div class="modal-body">
+            <label class="fld"><span>內容</span>
+              <input type="text" id="amText" placeholder="要做什麼？"></label>
+            <div class="fld-row">
+              <label class="fld"><span id="amDateLbl">日期</span>
+                <input type="date" id="amDate"></label>
+              <label class="fld"><span>分類</span>
+                <select id="amCat">
+                  <option value="work">工作</option>
+                  <option value="self">個人</option>
+                  <option value="meet">會議</option>
+                  <option value="out">外出</option>
+                </select></label>
+            </div>
+          </div>
+          <div class="modal-foot">
+            <button class="btn" id="amCancel">取消</button>
+            <button class="btn pri" id="amOk">新增</button>
           </div>
         </div>
       </div>
@@ -873,7 +889,7 @@ document.addEventListener('keydown', e => {
    待辦
    ========================================================= */
 function renderTodos(){
-  const showDone = document.getElementById('tdShowDone').checked;
+  const showDone = document.getElementById('btnTdShowDone').classList.contains('on');
   const list = ST.todos
     .filter(t => showDone || !t.done)
     .sort((a,b) => (a.done - b.done) || ((a.due||'9999') > (b.due||'9999') ? 1 : -1));
@@ -914,18 +930,11 @@ function bindTodoRows(sel){
     };
   });
 }
-document.getElementById('btnAddTodo').onclick = addTodo;
-document.getElementById('tdText').addEventListener('keydown', e => { if (e.key === 'Enter') addTodo(); });
-function addTodo(){
-  const el = document.getElementById('tdText');
-  const text = el.value.trim();
-  if (!text) return;
-  ST.todos.push({ id:uid(), text, due:document.getElementById('tdDue').value || '', cat:document.getElementById('tdCat').value, done:false });
-  save('todos');
-  el.value = ''; document.getElementById('tdDue').value = '';
-  renderTodos(); renderHome(); renderCal();
-}
-document.getElementById('tdShowDone').onchange = renderTodos;
+document.getElementById('btnTdShowDone').onclick = function(){
+  const on = this.classList.toggle('on');
+  document.getElementById('btnClearDone').hidden = !on;
+  renderTodos();
+};
 document.getElementById('btnClearDone').onclick = () => {
   const n = ST.todos.filter(t => t.done).length;
   if (!n) return;
@@ -938,7 +947,7 @@ document.getElementById('btnClearDone').onclick = () => {
    行程 + 月曆
    ========================================================= */
 function renderEvents(){
-  const showDone = document.getElementById('evShowDone').checked;
+  const showDone = document.getElementById('btnEvShowDone').classList.contains('on');
   const list = [...ST.events]
     .filter(e => showDone || !e.done)
     .sort((a,b) => (!!a.done - !!b.done) || (a.date > b.date ? 1 : -1));
@@ -968,9 +977,11 @@ function renderEvents(){
     };
   });
 }
-document.getElementById('btnAddEv').onclick = addEvent;
-document.getElementById('evText').addEventListener('keydown', e => { if (e.key === 'Enter') addEvent(); });
-document.getElementById('evShowDone').onchange = renderEvents;
+document.getElementById('btnEvShowDone').onclick = function(){
+  const on = this.classList.toggle('on');
+  document.getElementById('btnClearEvDone').hidden = !on;
+  renderEvents();
+};
 document.getElementById('btnClearEvDone').onclick = () => {
   const n = ST.events.filter(e => e.done).length;
   if (!n) return;
@@ -978,16 +989,44 @@ document.getElementById('btnClearEvDone').onclick = () => {
   ST.events = ST.events.filter(e => !e.done);
   save('events'); renderEvents(); renderCal(); renderHome();
 };
-function addEvent(){
-  const el = document.getElementById('evText');
-  const text = el.value.trim();
-  const date = document.getElementById('evDate').value;
-  if (!text || !date) { alert('行程內容與日期都要填'); return; }
-  ST.events.push({ id:uid(), text, date, cat:document.getElementById('evCat').value, done:false });
-  save('events');
-  el.value = '';
-  renderEvents(); renderCal(); renderHome();
+
+/* 新增對話框（待辦／行程共用） */
+let amMode = 'todo';
+function openAdd(mode){
+  amMode = mode;
+  const isTodo = mode === 'todo';
+  document.getElementById('amTitle').textContent = isTodo ? '新增待辦' : '新增行程';
+  document.getElementById('amText').placeholder = isTodo ? '要做什麼？' : '行程內容';
+  document.getElementById('amDateLbl').textContent = isTodo ? '到期日（可留空）' : '日期';
+  document.getElementById('amText').value = '';
+  document.getElementById('amDate').value = '';
+  document.getElementById('amCat').value = 'work';
+  document.getElementById('addModal').hidden = false;
+  setTimeout(() => document.getElementById('amText').focus(), 30);
 }
+function closeAdd(){ document.getElementById('addModal').hidden = true; }
+function submitAdd(){
+  const text = document.getElementById('amText').value.trim();
+  const date = document.getElementById('amDate').value;
+  const cat  = document.getElementById('amCat').value;
+  if (!text) { document.getElementById('amText').focus(); return; }
+  if (amMode === 'todo'){
+    ST.todos.push({ id:uid(), text, due:date || '', cat, done:false });
+    save('todos'); renderTodos(); renderHome(); renderCal();
+  } else {
+    if (!date) { alert('行程日期要填'); return; }
+    ST.events.push({ id:uid(), text, date, cat, done:false });
+    save('events'); renderEvents(); renderCal(); renderHome();
+  }
+  closeAdd();
+}
+document.getElementById('btnAddTodo').onclick = () => openAdd('todo');
+document.getElementById('btnAddEv').onclick   = () => openAdd('event');
+document.getElementById('amCancel').onclick = closeAdd;
+document.getElementById('amOk').onclick = submitAdd;
+document.getElementById('amText').addEventListener('keydown', e => { if (e.key === 'Enter') submitAdd(); });
+document.getElementById('addModal').addEventListener('click', e => { if (e.target.id === 'addModal') closeAdd(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !document.getElementById('addModal').hidden) closeAdd(); });
 
 function renderCal(){
   const first = new Date(calY, calM, 1);
@@ -1021,8 +1060,8 @@ function renderCal(){
   document.getElementById('calGrid').innerHTML = html;
   document.querySelectorAll('#calGrid .cel[data-d]').forEach(c => {
     c.onclick = () => {
-      document.getElementById('evDate').value = c.dataset.d;
-      document.getElementById('evText').focus();
+      openAdd('event');
+      document.getElementById('amDate').value = c.dataset.d;
     };
   });
 }
