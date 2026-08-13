@@ -271,9 +271,19 @@ table.rpt tr.sum td{font-weight:700;border-top:1px solid var(--line);background:
 .chev{width:15px;height:15px;stroke:var(--ink-3);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform .2s;flex:0 0 auto}
 .card.collapsed .chev{transform:rotate(-90deg)}
 .card.collapsed .card-body{display:none}
-.prj-sum{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
-.prj-sum .chip2{font-size:12px;padding:3px 9px;border-radius:20px;background:var(--line-soft);color:var(--ink-2);font-weight:600}
-.prj-sum .chip2 b{font-weight:800;margin-left:3px;color:var(--ink)}
+.prj-ov{display:flex;align-items:center;gap:14px;margin-bottom:10px}
+.prj-ring{position:relative;width:62px;height:62px;border-radius:50%;flex:0 0 auto;background:conic-gradient(var(--accent) calc(var(--pct)*3.6deg), var(--line-soft) 0)}
+.prj-ring::after{content:'';position:absolute;inset:7px;background:var(--card);border-radius:50%}
+.prj-ring-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:var(--ink);z-index:1}
+.prj-tiles{display:flex;gap:16px;flex-wrap:wrap;flex:1}
+.prj-tiles .pt-i{display:flex;flex-direction:column;line-height:1.1}
+.prj-tiles .pt-i b{font-size:20px;font-weight:800;font-variant-numeric:tabular-nums}
+.prj-tiles .pt-i span{font-size:11.5px;color:var(--ink-3);margin-top:2px}
+.prj-stack{display:flex;height:8px;border-radius:20px;overflow:hidden;background:var(--line-soft)}
+.prj-stack>span{display:block}
+.prj-legend{display:flex;flex-wrap:wrap;gap:12px;margin-top:7px;font-size:11.5px;color:var(--ink-2)}
+.prj-legend i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px;vertical-align:middle}
+.prj-recent-h{font-size:11.5px;color:var(--ink-3);font-weight:600;margin:2px 0 6px}
 .prj-mini{padding:7px 0;border-bottom:1px solid var(--line-soft)}
 .prj-mini:last-child{border-bottom:0}
 .prj-mini .pm-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:5px}
@@ -492,6 +502,7 @@ table.rpt tr.sum td{font-weight:700;border-top:1px solid var(--line);background:
         </div>
         <div class="card" id="hcard-prj">
           <h2 class="card-toggle">專案進度 <span class="h2r"><span class="r" id="homePrjCnt"></span><svg class="chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></span></h2>
+          <div id="homePrjStat"></div>
           <div class="card-body"><div id="homePrjs"></div></div>
         </div>
       </div>
@@ -995,7 +1006,7 @@ document.querySelectorAll('#p-home .card[id] .card-toggle').forEach(h => {
 });
 document.querySelectorAll('#p-home .card[id]').forEach(card => {
   let v = null; try { v = localStorage.getItem('MJ_WB_C_' + card.id); } catch(e){}
-  if (v === '1') card.classList.add('collapsed');
+  if (v === '1' || (v === null && card.id === 'hcard-prj')) card.classList.add('collapsed');
 });
 document.addEventListener('keydown', e => {
   if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
@@ -1476,27 +1487,39 @@ function renderHome(){
       }).join('') + '</div>'
     : '<div class="empty">未來兩週沒有行程</div>';
 
-  /* 專案（projects.md）——總覽用精簡呈現：狀態統計 + 最近更新前 6（不含已完成） */
+  /* 專案（projects.md）——總覽：統計圖(總數/狀態/平均進度)常駐 + 展開看最近更新 5 個 */
   const prjs = allProjects();
   document.getElementById('homePrjCnt').textContent = `共 ${prjs.length} 項`;
+  const statEl = document.getElementById('homePrjStat');
+  const listEl = document.getElementById('homePrjs');
   if (!prjs.length){
-    document.getElementById('homePrjs').innerHTML = '<div class="empty">還沒有專案</div>';
+    statEl.innerHTML = '';
+    listEl.innerHTML = '<div class="empty">還沒有專案</div>';
   } else {
-    const cnt = { '進行中':0, '已完成':0, '暫停':0, '未開始':0 };
-    prjs.forEach(p => { if (cnt[p.status] != null) cnt[p.status]++; });
-    const sum = ['進行中','已完成','暫停','未開始']
-      .filter(k => cnt[k])
-      .map(k => `<span class="chip2">${k}<b>${cnt[k]}</b></span>`).join('');
+    const c = s => prjs.filter(p => (p.status || '') === s).length;
+    const inProg = c('進行中'), paused = c('暫停'), done = c('已完成'), notStarted = c('未開始');
+    const avg = Math.round(prjs.reduce((s,p) => s + (Number(p.pct) || 0), 0) / prjs.length);
+    const seg = (v, color) => v ? `<span style="flex:${v};background:${color}"></span>` : '';
+    statEl.innerHTML =
+      `<div class="prj-ov">
+        <div class="prj-ring" style="--pct:${avg}"><span class="prj-ring-num">${avg}%</span></div>
+        <div class="prj-tiles">
+          <div class="pt-i"><b>${prjs.length}</b><span>總數</span></div>
+          <div class="pt-i"><b style="color:var(--blue)">${inProg}</b><span>進行中</span></div>
+          <div class="pt-i"><b style="color:var(--amber)">${paused}</b><span>暫停</span></div>
+          <div class="pt-i"><b style="color:var(--green)">${done}</b><span>已完成</span></div>
+        </div>
+      </div>
+      <div class="prj-stack">${seg(done,'var(--green)')}${seg(inProg,'var(--blue)')}${seg(paused,'var(--amber)')}${seg(notStarted,'var(--ink-3)')}</div>
+      <div class="prj-legend"><span><i style="background:var(--green)"></i>完成 ${done}</span><span><i style="background:var(--blue)"></i>進行中 ${inProg}</span><span><i style="background:var(--amber)"></i>暫停 ${paused}</span>${notStarted ? `<span><i style="background:var(--ink-3)"></i>未開始 ${notStarted}</span>` : ''}</div>`;
     const recent = [...prjs]
-      .filter(p => p.status !== '已完成')
       .sort((a,b) => (((b.logs||[])[0]||{}).date || '') > (((a.logs||[])[0]||{}).date || '') ? 1 : -1)
-      .slice(0,6);
-    const rows = recent.map(p => {
+      .slice(0,5);
+    listEl.innerHTML = '<div class="prj-recent-h">最近更新的 5 個專案</div>' + recent.map(p => {
       const cls = p.pct >= 100 ? 'ok' : p.pct >= 50 ? '' : p.pct > 0 ? 'warn' : 'bad';
       return `<div class="prj-mini"><div class="pm-top"><span class="pm-name">${esc(p.name)}</span><span class="pm-pct">${p.pct}%</span></div>
         <div class="bar ${cls}"><i style="width:${p.pct}%"></i></div></div>`;
     }).join('');
-    document.getElementById('homePrjs').innerHTML = `<div class="prj-sum">${sum}</div>${rows}`;
   }
 }
 
