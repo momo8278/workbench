@@ -1512,17 +1512,17 @@ function renderHome(){
       </div>
       <div class="prj-stack">${seg(done,'var(--green)')}${seg(inProg,'var(--blue)')}${seg(paused,'var(--amber)')}${seg(notStarted,'var(--ink-3)')}</div>
       <div class="prj-legend"><span><i style="background:var(--green)"></i>完成 ${done}</span><span><i style="background:var(--blue)"></i>進行中 ${inProg}</span><span><i style="background:var(--amber)"></i>暫停 ${paused}</span>${notStarted ? `<span><i style="background:var(--ink-3)"></i>未開始 ${notStarted}</span>` : ''}</div>`;
-    const cut = new Date(); cut.setMonth(cut.getMonth() - 1);
+    const cut = new Date(); cut.setDate(cut.getDate() - 15);
     const cutISO = cut.toISOString().slice(0,10);
     const recent = [...prjs]
       .filter(p => { const d = ((p.logs||[])[0]||{}).date || ''; return d && d >= cutISO; })
       .sort((a,b) => (((b.logs||[])[0]||{}).date || '') > (((a.logs||[])[0]||{}).date || '') ? 1 : -1);
-    listEl.innerHTML = `<div class="prj-recent-h">最近一個月有更新（${recent.length} 個）</div>` +
+    listEl.innerHTML = `<div class="prj-recent-h">最近 15 天有更新（${recent.length} 個）</div>` +
       (recent.length ? recent.map(p => {
         const cls = p.pct >= 100 ? 'ok' : p.pct >= 50 ? '' : p.pct > 0 ? 'warn' : 'bad';
         return `<div class="prj-mini"><div class="pm-top"><span class="pm-name">${esc(p.name)}</span><span class="pm-pct">${p.pct}%</span></div>
           <div class="bar ${cls}"><i style="width:${p.pct}%"></i></div></div>`;
-      }).join('') : '<div class="empty">最近一個月沒有更新的專案</div>');
+      }).join('') : '<div class="empty">最近 15 天沒有更新的專案</div>');
   }
 }
 
