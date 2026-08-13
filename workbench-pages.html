@@ -51,7 +51,7 @@ a:hover{text-decoration:underline}
   display:flex;flex-direction:column;gap:4px;
   position:sticky;top:0;height:100vh;overflow-y:auto;
 }
-.side-id{padding:0 8px 18px}
+.side-id{padding:0 8px 18px;display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
 .side-id .nm{font-size:15px;font-weight:700;letter-spacing:.02em}
 .side-id .sub{font-size:12px;color:var(--ink-3);margin-top:2px}
 .navbtn{
@@ -73,6 +73,29 @@ a:hover{text-decoration:underline}
 
 .main{flex:1;min-width:0;padding:26px 30px 60px;max-width:1240px}
 .main.wide{max-width:1860px}   /* 專案進度頁用滿版，卡片才排得下 4 欄 */
+
+/* ---------- 側欄收合 ---------- */
+.side{transition:margin-left .22s ease}
+.nav-collapse{border:0;background:transparent;padding:4px;border-radius:7px;color:var(--ink-3);flex:0 0 auto;cursor:pointer}
+.nav-collapse:hover{background:var(--line-soft);color:var(--ink)}
+.nav-collapse svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;display:block}
+.nav-open{position:fixed;top:12px;left:12px;z-index:50;width:38px;height:38px;border-radius:9px;border:1px solid var(--line);background:var(--card);box-shadow:var(--shadow);display:none;align-items:center;justify-content:center;color:var(--ink-2);cursor:pointer}
+.nav-open svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.nav-backdrop{display:none;position:fixed;inset:0;background:rgba(20,22,26,.35);z-index:35}
+.shell.nav-collapsed .side{margin-left:-213px}
+.shell.nav-collapsed .nav-open{display:flex}
+.shell.nav-collapsed .main{padding-left:64px}
+@media(max-width:820px){
+  .side{position:fixed;top:0;left:0;z-index:40;box-shadow:0 10px 40px rgba(20,22,26,.18)}
+  .main{max-width:none;padding-top:60px;padding-left:16px;padding-right:16px}
+  .shell.nav-collapsed .main{padding-left:16px}
+  .shell:not(.nav-collapsed) .nav-backdrop{display:block}
+}
+@media(max-width:600px){
+  .cal-hint{display:none}
+  .cal-hd{flex-wrap:wrap;gap:6px}
+  .cal-hd .mo{font-size:14px}
+}
 .page{display:none}
 .page.on{display:block}
 
@@ -321,10 +344,20 @@ table.rpt tr.sum td{font-weight:700;border-top:1px solid var(--line);background:
 <body>
 <div class="shell">
 
+  <button class="nav-open" id="btnNavOpen" title="開啟選單" aria-label="開啟選單">
+    <svg viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+  </button>
+  <div class="nav-backdrop" id="navBackdrop"></div>
+
   <nav class="side">
     <div class="side-id">
-      <div class="nm">我的工作台</div>
-      <div class="sub" id="syncSub">資料存這台瀏覽器</div>
+      <div>
+        <div class="nm">我的工作台</div>
+        <div class="sub" id="syncSub">資料存這台瀏覽器</div>
+      </div>
+      <button class="nav-collapse" id="btnNavCollapse" title="收合選單" aria-label="收合選單">
+        <svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>
+      </button>
     </div>
 
     <div class="auth" id="fileBox">
@@ -894,7 +927,23 @@ function go(p){
   location.hash = p;
   window.scrollTo(0,0);
 }
-document.querySelectorAll('.navbtn').forEach(b => b.onclick = () => go(b.dataset.go));
+document.querySelectorAll('.navbtn').forEach(b => b.onclick = () => { go(b.dataset.go); if (window.innerWidth <= 820) setNav(true); });
+
+/* ---------- 側欄收合 ---------- */
+const shell = document.querySelector('.shell');
+function setNav(collapsed){
+  shell.classList.toggle('nav-collapsed', collapsed);
+  try { localStorage.setItem('MJ_WB_NAV', collapsed ? '1' : '0'); } catch(e){}
+}
+document.getElementById('btnNavCollapse').onclick = () => setNav(true);
+document.getElementById('btnNavOpen').onclick = () => setNav(false);
+document.getElementById('navBackdrop').onclick = () => setNav(true);
+(function initNav(){
+  let saved = null;
+  try { saved = localStorage.getItem('MJ_WB_NAV'); } catch(e){}
+  const mobile = window.innerWidth <= 820;
+  setNav(saved === '1' || (saved === null && mobile));
+})();
 document.addEventListener('keydown', e => {
   if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
   if (e.ctrlKey || e.altKey || e.metaKey) return;
