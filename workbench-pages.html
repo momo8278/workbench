@@ -1643,14 +1643,20 @@ function buildHTMLReport(){
       L.push(`<div class="kpi" style="--ac:#4f7a5b"><div class="kl">已完成</div><div class="kv">${doneTodos.length||'—'}</div><div class="ks">完成率 ${ST.todos.length?Math.round(doneTodos.length/ST.todos.length*100)+'%':'—'}</div></div>`);
       L.push('</div>');
       L.push('<table class="dt"><thead><tr><th class="tl" style="width:52%">待辦內容</th><th style="width:12%">分類</th><th style="width:16%">到期日</th><th style="width:20%">狀態</th></tr></thead><tbody>');
-      const showList = openTodos.slice(0,12);
-      for (const t of showList){
+      const openShow = openTodos.slice(0,10);
+      const doneShow = doneTodos.slice(0,8);
+      for (const t of openShow){
         const c = CAT[t.cat] || CAT.work;
         L.push(`<tr><td class="tl" contenteditable="true">${esc(t.text)}</td><td>${c.lb}</td><td>${t.due||'—'}</td><td>${todoSt(t)}</td></tr>`);
       }
-      if (!showList.length) L.push('<tr><td colspan="4" class="no-data">待辦都完成了</td></tr>');
+      for (const t of doneShow){
+        const c = CAT[t.cat] || CAT.work;
+        L.push(`<tr><td class="tl" contenteditable="true" style="text-decoration:line-through;color:#8a857c">${esc(t.text)}</td><td>${c.lb}</td><td>${t.due||'—'}</td><td><span class="st" style="background:var(--good-bg);color:var(--good-tx)">✓ 已完成</span></td></tr>`);
+      }
+      if (!openShow.length && !doneShow.length) L.push('<tr><td colspan="4" class="no-data">目前沒有待辦</td></tr>');
       L.push('</tbody></table>');
-      if (openTodos.length > 12) L.push(`<p class="note">※ 未完成共 ${openTodos.length} 項，本頁僅列最近到期的 12 項。</p>`);
+      if (openTodos.length > 10) L.push(`<p class="note">※ 未完成共 ${openTodos.length} 項，本頁僅列最近到期的 10 項。</p>`);
+      if (doneTodos.length > 8) L.push(`<p class="note">※ 已完成共 ${doneTodos.length} 項，本頁僅列最近 8 項。</p>`);
       L.push('<p class="note">※ 待辦內容可直接點擊修改（只改這份報告，不影響工作台）。</p>');
       L.push('</div>');
     }
