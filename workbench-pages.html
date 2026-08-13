@@ -252,6 +252,21 @@ table.rpt tr.sum td{font-weight:700;border-top:1px solid var(--line);background:
 .prj .pn{font-size:13.5px;font-weight:600}
 .prj .pp{font-size:12px;color:var(--ink-3);font-variant-numeric:tabular-nums}
 .prj .bar{margin-top:6px}
+/* 首頁摘要卡收合 + 精簡專案呈現 */
+.g3{align-items:start}
+.card-toggle{cursor:pointer;user-select:none}
+.h2r{display:inline-flex;align-items:center;gap:8px}
+.chev{width:15px;height:15px;stroke:var(--ink-3);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform .2s;flex:0 0 auto}
+.card.collapsed .chev{transform:rotate(-90deg)}
+.card.collapsed .card-body{display:none}
+.prj-sum{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.prj-sum .chip2{font-size:12px;padding:3px 9px;border-radius:20px;background:var(--line-soft);color:var(--ink-2);font-weight:600}
+.prj-sum .chip2 b{font-weight:800;margin-left:3px;color:var(--ink)}
+.prj-mini{padding:7px 0;border-bottom:1px solid var(--line-soft)}
+.prj-mini:last-child{border-bottom:0}
+.prj-mini .pm-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:5px}
+.prj-mini .pm-name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prj-mini .pm-pct{font-size:12px;color:var(--ink-3);font-variant-numeric:tabular-nums;flex:0 0 auto}
 .note{
   background:var(--amber-soft);border:1px solid #f0e3c0;color:#7a5c05;
   border-radius:10px;padding:9px 12px;font-size:12.5px;margin-bottom:16px;line-height:1.55;
@@ -442,17 +457,17 @@ table.rpt tr.sum td{font-weight:700;border-top:1px solid var(--line);background:
       </div>
 
       <div class="grid g3">
-        <div class="card">
-          <h2>待辦清單 <span class="r" id="homeTodoCnt"></span></h2>
-          <div id="homeTodos"></div>
+        <div class="card" id="hcard-todo">
+          <h2 class="card-toggle">待辦清單 <span class="h2r"><span class="r" id="homeTodoCnt"></span><svg class="chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></span></h2>
+          <div class="card-body"><div id="homeTodos"></div></div>
         </div>
-        <div class="card">
-          <h2>近期行程 <span class="r">未來 14 天</span></h2>
-          <div id="homeEvents"></div>
+        <div class="card" id="hcard-events">
+          <h2 class="card-toggle">近期行程 <span class="h2r"><span class="r">未來 14 天</span><svg class="chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></span></h2>
+          <div class="card-body"><div id="homeEvents"></div></div>
         </div>
-        <div class="card">
-          <h2>專案進度 <span class="r" id="homePrjCnt"></span></h2>
-          <div id="homePrjs"></div>
+        <div class="card" id="hcard-prj">
+          <h2 class="card-toggle">專案進度 <span class="h2r"><span class="r" id="homePrjCnt"></span><svg class="chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></span></h2>
+          <div class="card-body"><div id="homePrjs"></div></div>
         </div>
       </div>
     </section>
@@ -944,6 +959,19 @@ document.getElementById('navBackdrop').onclick = () => setNav(true);
   const mobile = window.innerWidth <= 820;
   setNav(saved === '1' || (saved === null && mobile));
 })();
+
+/* ---------- 首頁摘要卡收合 ---------- */
+document.querySelectorAll('#p-home .card[id] .card-toggle').forEach(h => {
+  h.onclick = () => {
+    const card = h.closest('.card');
+    const collapsed = card.classList.toggle('collapsed');
+    try { localStorage.setItem('MJ_WB_C_' + card.id, collapsed ? '1' : '0'); } catch(e){}
+  };
+});
+document.querySelectorAll('#p-home .card[id]').forEach(card => {
+  let v = null; try { v = localStorage.getItem('MJ_WB_C_' + card.id); } catch(e){}
+  if (v === '1') card.classList.add('collapsed');
+});
 document.addEventListener('keydown', e => {
   if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
   if (e.ctrlKey || e.altKey || e.metaKey) return;
@@ -1423,18 +1451,28 @@ function renderHome(){
       }).join('') + '</div>'
     : '<div class="empty">未來兩週沒有行程</div>';
 
-  /* 專案（projects.md） */
+  /* 專案（projects.md）——總覽用精簡呈現：狀態統計 + 最近更新前 6（不含已完成） */
   const prjs = allProjects();
   document.getElementById('homePrjCnt').textContent = `共 ${prjs.length} 項`;
-  document.getElementById('homePrjs').innerHTML = prjs.length
-    ? prjs.slice(0,5).map(p => {
-        const cls = p.pct >= 100 ? 'ok' : p.pct >= 50 ? '' : p.pct > 0 ? 'warn' : 'bad';
-        const last = (p.logs || [])[0];
-        return `<div class="prj"><div class="ph"><span class="pn">${esc(p.name)}</span><span class="pp">${p.pct}%</span></div>
-          <div class="bar ${cls}"><i style="width:${p.pct}%"></i></div>
-          ${last ? `<div style="font-size:11.5px;color:var(--ink-3);margin-top:4px">${esc(last.date)} ${esc(last.text)}</div>` : ''}</div>`;
-      }).join('')
-    : '<div class="empty">還沒有專案</div>';
+  if (!prjs.length){
+    document.getElementById('homePrjs').innerHTML = '<div class="empty">還沒有專案</div>';
+  } else {
+    const cnt = { '進行中':0, '已完成':0, '暫停':0, '未開始':0 };
+    prjs.forEach(p => { if (cnt[p.status] != null) cnt[p.status]++; });
+    const sum = ['進行中','已完成','暫停','未開始']
+      .filter(k => cnt[k])
+      .map(k => `<span class="chip2">${k}<b>${cnt[k]}</b></span>`).join('');
+    const recent = [...prjs]
+      .filter(p => p.status !== '已完成')
+      .sort((a,b) => (((b.logs||[])[0]||{}).date || '') > (((a.logs||[])[0]||{}).date || '') ? 1 : -1)
+      .slice(0,6);
+    const rows = recent.map(p => {
+      const cls = p.pct >= 100 ? 'ok' : p.pct >= 50 ? '' : p.pct > 0 ? 'warn' : 'bad';
+      return `<div class="prj-mini"><div class="pm-top"><span class="pm-name">${esc(p.name)}</span><span class="pm-pct">${p.pct}%</span></div>
+        <div class="bar ${cls}"><i style="width:${p.pct}%"></i></div></div>`;
+    }).join('');
+    document.getElementById('homePrjs').innerHTML = `<div class="prj-sum">${sum}</div>${rows}`;
+  }
 }
 
 /* =========================================================
