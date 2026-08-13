@@ -427,9 +427,6 @@ table.rpt tr.sum td{font-weight:700;border-top:1px solid var(--line);background:
     <div class="side-foot">
       <button id="btnReport" style="border-color:var(--ink);color:var(--ink);font-weight:700">產出 HTML 週報</button>
       <div class="hint" id="repMsg" style="display:none"></div>
-      <button id="btnExport">匯出資料 JSON</button>
-      <button id="btnImport">匯入資料 JSON</button>
-      <input type="file" id="fileImport" accept=".json" hidden>
       <div class="hint" id="footHint">連結 OneDrive 資料夾就能跨機同步；沒連結時只存這台瀏覽器。<br>← → 可換頁。</div>
     </div>
   </nav>
@@ -1861,42 +1858,6 @@ document.getElementById('btnReport').onclick = () => {
   }
 };
 
-/* =========================================================
-   匯出 / 匯入
-   ========================================================= */
-document.getElementById('btnExport').onclick = () => {
-  const payload = {
-    _meta:{ app:'mj-workbench', version:1, exportedAt:new Date().toISOString() },
-    todos:ST.todos, events:ST.events
-  };
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type:'application/json' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `workbench-snapshot-${todayISO()}.json`;
-  a.click();
-  URL.revokeObjectURL(a.href);
-};
-document.getElementById('btnImport').onclick = () => document.getElementById('fileImport').click();
-document.getElementById('fileImport').onchange = ev => {
-  const f = ev.target.files[0];
-  if (!f) return;
-  const rd = new FileReader();
-  rd.onload = () => {
-    let js;
-    try { js = JSON.parse(rd.result); } catch(e){ alert('這不是有效的 JSON 檔'); return; }
-    if (!confirm('匯入會覆蓋這台電腦目前的待辦／行程／目標／專案，確定？')) return;
-    applyData(js, true);
-    alert('已匯入');
-  };
-  rd.readAsText(f, 'utf-8');
-  ev.target.value = '';
-};
-function applyData(js, persist){
-  for (const k of ['todos','events']){
-    if (Array.isArray(js[k])) { ST[k] = js[k]; if (persist) save(k); }
-  }
-  renderAllLocal();
-}
 function renderAllLocal(){
   renderTodos(); renderEvents(); renderCal(); renderPrjs(); renderHome();
 }
