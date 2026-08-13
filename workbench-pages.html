@@ -189,10 +189,13 @@ table.rpt tr.sum td{font-weight:700;border-top:1px solid var(--line);background:
 .cal-hd .mo{font-size:15px;font-weight:700}
 .cal-hd .nav{display:flex;gap:6px}
 /* minmax(0,1fr)：沒有這個 0，格子裡的 nowrap 長行程會把該欄撐寬、整個月曆歪掉 */
-.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
-.cal .wd{font-size:12px;color:var(--ink-3);text-align:center;padding:5px 0 7px;font-weight:600;min-width:0}
+.cal-card{display:flex;flex-direction:column;height:calc(100vh - 200px);min-height:380px}
+.cal-hint{font-size:11.5px;color:var(--ink-3);margin-right:8px;align-self:center}
+.cal-wd{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;margin-bottom:5px}
+.cal-wd>div{font-size:12px;color:var(--ink-3);text-align:center;font-weight:600;padding:2px 0;min-width:0}
+.cal{flex:1;min-height:0;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-auto-rows:minmax(0,1fr);gap:5px}
 .cel{
-  min-height:104px;min-width:0;border:1px solid var(--line-soft);border-radius:10px;padding:7px;
+  min-height:0;min-width:0;border:1px solid var(--line-soft);border-radius:10px;padding:7px;
   background:var(--card);cursor:pointer;display:flex;flex-direction:column;gap:3px;overflow:hidden;
 }
 .cel:hover{border-color:var(--blue);background:var(--blue-soft)}
@@ -237,7 +240,8 @@ table.rpt tr.sum td{font-weight:700;border-top:1px solid var(--line);background:
 }
 .hero .hi{font-size:19px;font-weight:700}
 .hero .hs{font-size:13px;color:var(--ink-3);margin-top:2px}
-.hero .quote{margin-top:12px;padding-top:12px;border-top:1px solid var(--line-soft);font-size:13px;color:var(--ink-2)}
+.hero .quote{margin-top:12px;padding:9px 13px;background:var(--accent-soft);border-left:3px solid var(--accent);border-radius:8px;font-size:14px;font-weight:600;color:var(--accent)}
+.hero .quote b{font-weight:800}
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--card)}
 .seg button{border:0;background:transparent;padding:5px 11px;font-size:12.5px;color:var(--ink-2);font-weight:500}
 .seg button.on{background:var(--ink);color:#fff;font-weight:700}
@@ -389,18 +393,19 @@ table.rpt tr.sum td{font-weight:700;border-top:1px solid var(--line);background:
         <div class="quote" id="heroSum"></div>
       </div>
 
-      <!-- 行事曆（首頁置頂全寬） -->
-      <div class="card" style="margin-bottom:16px">
+      <!-- 行事曆（首頁置頂全寬、隨視窗高度自適應） -->
+      <div class="card cal-card" style="margin-bottom:16px">
         <div class="cal-hd">
           <div class="mo" id="calMo"></div>
           <div class="nav">
+            <span class="cal-hint">點日期可新增行程</span>
             <button class="btn sm" id="calPrev">←</button>
             <button class="btn sm" id="calToday">本月</button>
             <button class="btn sm" id="calNext">→</button>
           </div>
         </div>
+        <div class="cal-wd"><div>日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div></div>
         <div class="cal" id="calGrid"></div>
-        <div class="dt" style="margin-top:8px">點月曆上的日期可直接新增當天行程</div>
       </div>
 
       <div class="grid g3">
@@ -1072,7 +1077,7 @@ function renderCal(){
     if (t.due) (byDate[t.due] = byDate[t.due] || []).push({ t:t.text, cat:t.cat, todo:true, done:t.done });
   }
 
-  let html = WD.map(w => `<div class="wd">${w}</div>`).join('');
+  let html = '';
   for (let i = 0; i < lead; i++) html += '<div class="cel pad"></div>';
   for (let d = 1; d <= lastDay; d++){
     const ds = `${calY}-${pad(calM+1)}-${pad(d)}`;
