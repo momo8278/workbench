@@ -181,6 +181,9 @@ table.rpt tr.sum td{font-weight:700;border-top:1px solid var(--line);background:
 .row .mt{font-size:11.5px;color:var(--ink-3);margin-top:2px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .row .x{border:0;background:transparent;color:var(--ink-3);font-size:15px;line-height:1;padding:2px 4px;border-radius:5px}
 .row .x:hover{background:var(--accent-soft);color:var(--accent)}
+.row .ed{border:0;background:transparent;color:var(--ink-3);font-size:13px;line-height:1;padding:2px 4px;border-radius:5px}
+.row .ed:hover{background:var(--accent-soft);color:var(--accent)}
+.row .tnote{font-size:11.5px;color:var(--ink-3);margin-top:4px;line-height:1.5;white-space:pre-wrap;word-break:break-word}
 .ck{appearance:none;width:16px;height:16px;border:1.6px solid var(--ink-3);border-radius:5px;margin:3px 0 0;flex:0 0 16px;position:relative}
 .ck:checked{background:var(--green);border-color:var(--green)}
 .ck:checked::after{content:"";position:absolute;left:4.4px;top:1.4px;width:4px;height:8px;border:solid #fff;border-width:0 1.8px 1.8px 0;transform:rotate(45deg)}
@@ -215,8 +218,10 @@ table.rpt tr.sum td{font-weight:700;border-top:1px solid var(--line);background:
 .modal .fld{display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--ink-3);font-weight:600}
 .modal .fld-row{display:flex;gap:12px}
 .modal .fld-row .fld{flex:1}
-.modal .fld input,.modal .fld select{border:1px solid var(--line);border-radius:var(--radius-sm);padding:8px 10px;font-size:13px;color:var(--ink);background:var(--card);width:100%}
-.modal .fld input:focus,.modal .fld select:focus{outline:0;border-color:var(--blue)}
+.modal .fld[hidden],.modal .fld-row[hidden]{display:none}
+.modal .fld input,.modal .fld select,.modal .fld textarea{border:1px solid var(--line);border-radius:var(--radius-sm);padding:8px 10px;font-size:13px;color:var(--ink);background:var(--card);width:100%}
+.modal .fld textarea{resize:vertical;min-height:56px;font-family:inherit;line-height:1.5}
+.modal .fld input:focus,.modal .fld select:focus,.modal .fld textarea:focus{outline:0;border-color:var(--blue)}
 .modal-foot{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
 
 /* ---------- calendar ---------- */
@@ -457,6 +462,8 @@ table.rpt tr.sum td{font-weight:700;border-top:1px solid var(--line);background:
             <label class="fld"><span>結束時間</span>
               <input type="time" id="amTimeEnd"></label>
           </div>
+          <label class="fld" id="amNoteFld"><span>詳細內容／備註（可留空）</span>
+            <textarea id="amNote" placeholder="細節、備註、相關連結…"></textarea></label>
         </div>
         <div class="modal-foot">
           <button class="btn" id="amCancel">取消</button>
@@ -1051,7 +1058,9 @@ function todoRow(t){
   return `<div class="row ${t.done ? 'done' : ''}" data-id="${t.id}">
     <input type="checkbox" class="ck" ${t.done ? 'checked' : ''}>
     <div class="bd"><div class="tt">${esc(t.text)}</div>
-      <div class="mt"><span class="chip ${c.cls}">${c.lb}</span>${t.done ? doneDate(t.due) : dueBadge(t.due)}</div></div>
+      <div class="mt"><span class="chip ${c.cls}">${c.lb}</span>${t.done ? doneDate(t.due) : dueBadge(t.due)}</div>
+      ${t.note ? `<div class="tnote">${esc(t.note)}</div>` : ''}</div>
+    <button class="ed" title="編輯">✎</button>
     <button class="x" title="刪除">×</button></div>`;
 }
 function bindTodoRows(sel){
@@ -1062,6 +1071,8 @@ function bindTodoRows(sel){
       const t = ST.todos.find(x => x.id === id);
       if (t) { t.done = ck.checked; save('todos'); renderTodos(); renderHome(); }
     };
+    const ed = r.querySelector('.ed');
+    if (ed) ed.onclick = () => openTodoEdit(id);
     const x = r.querySelector('.x');
     if (x) x.onclick = () => {
       ST.todos = ST.todos.filter(x2 => x2.id !== id);
@@ -1131,18 +1142,41 @@ document.getElementById('btnClearEvDone').onclick = () => {
 
 /* 新增對話框（待辦／行程共用） */
 let amMode = 'todo';
+let amEditId = null;
 function openAdd(mode){
   amMode = mode;
+  amEditId = null;
   const isTodo = mode === 'todo';
   document.getElementById('amTitle').textContent = isTodo ? '新增待辦' : '新增行程';
   document.getElementById('amText').placeholder = isTodo ? '要做什麼？' : '行程內容';
   document.getElementById('amDateLbl').textContent = isTodo ? '到期日（可留空）' : '日期';
   document.getElementById('amTimeFld').hidden = isTodo;
+  document.getElementById('amNoteFld').hidden = !isTodo;
+  document.getElementById('amOk').textContent = '新增';
   document.getElementById('amText').value = '';
   document.getElementById('amDate').value = '';
   document.getElementById('amTime').value = '';
   document.getElementById('amTimeEnd').value = '';
+  document.getElementById('amNote').value = '';
   document.getElementById('amCat').value = 'work';
+  document.getElementById('addModal').hidden = false;
+  setTimeout(() => document.getElementById('amText').focus(), 30);
+}
+function openTodoEdit(id){
+  const t = ST.todos.find(x => x.id === id);
+  if (!t) return;
+  amMode = 'todo';
+  amEditId = id;
+  document.getElementById('amTitle').textContent = '編輯待辦';
+  document.getElementById('amText').placeholder = '要做什麼？';
+  document.getElementById('amDateLbl').textContent = '到期日（可留空）';
+  document.getElementById('amTimeFld').hidden = true;
+  document.getElementById('amNoteFld').hidden = false;
+  document.getElementById('amOk').textContent = '儲存';
+  document.getElementById('amText').value = t.text;
+  document.getElementById('amDate').value = t.due || '';
+  document.getElementById('amNote').value = t.note || '';
+  document.getElementById('amCat').value = t.cat || 'work';
   document.getElementById('addModal').hidden = false;
   setTimeout(() => document.getElementById('amText').focus(), 30);
 }
@@ -1151,9 +1185,16 @@ function submitAdd(){
   const text = document.getElementById('amText').value.trim();
   const date = document.getElementById('amDate').value;
   const cat  = document.getElementById('amCat').value;
+  const note = document.getElementById('amNote').value.trim();
   if (!text) { document.getElementById('amText').focus(); return; }
+  if (amMode === 'todo' && amEditId){
+    const t = ST.todos.find(x => x.id === amEditId);
+    if (t) { t.text = text; t.due = date || ''; t.cat = cat; t.note = note; }
+    save('todos'); renderTodos(); renderHome(); renderCal();
+    closeAdd(); return;
+  }
   if (amMode === 'todo'){
-    ST.todos.push({ id:uid(), text, due:date || '', cat, done:false });
+    ST.todos.push({ id:uid(), text, due:date || '', cat, done:false, note });
     save('todos'); renderTodos(); renderHome(); renderCal();
   } else {
     if (!date) { alert('行程日期要填'); return; }
