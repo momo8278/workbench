@@ -142,6 +142,7 @@ a:hover{text-decoration:underline}
 .c-self{background:var(--peach-soft);color:var(--peach)}
 .c-meet{background:var(--amber-soft);color:var(--amber)}
 .c-out{background:var(--mint-soft);color:var(--mint)}
+.c-mkt{background:#fdf1dc;color:#b45309}
 .c-gen{background:var(--line-soft);color:var(--ink-2)}
 
 /* ---------- progress ---------- */
@@ -254,6 +255,7 @@ table.rpt tr.sum td{font-weight:700;border-top:1px solid var(--line);background:
 .cel .ev.c-self{background:var(--purple-soft);color:var(--purple);border-left-color:var(--purple)}
 .cel .ev.c-meet{background:var(--amber-soft);color:var(--amber);border-left-color:var(--amber)}
 .cel .ev.c-out{background:var(--green-soft);color:var(--green);border-left-color:var(--green)}
+.cel .ev.c-mkt{background:#fdf1dc;color:#b45309;border-left-color:#e08a00}
 .cel .ev.t{background:var(--accent-soft);color:var(--accent);border-left-color:var(--accent)}
 .cel .ev.done{opacity:.5;text-decoration:line-through}
 .cel .ev.c-gen{background:transparent;border-left-color:transparent;color:var(--ink-3);padding-left:4px}
@@ -459,6 +461,7 @@ table.rpt tr.sum td{font-weight:700;border-top:1px solid var(--line);background:
             <label class="fld"><span>分類</span>
               <select id="amCat">
                 <option value="work">工作</option>
+                <option value="mkt">行銷</option>
                 <option value="self">個人</option>
                 <option value="meet">會議</option>
                 <option value="out">外出</option>
@@ -617,6 +620,7 @@ const K = {
 };
 const CAT = {
   work:{lb:'工作', cls:'c-work'},
+  mkt :{lb:'行銷', cls:'c-mkt'},
   self:{lb:'個人', cls:'c-self'},
   meet:{lb:'會議', cls:'c-meet'},
   out :{lb:'外出', cls:'c-out'},
