@@ -390,7 +390,11 @@ table.rpt tr.sum td{font-weight:700;border-top:1px solid var(--line);background:
 .pcard:has(.s-pause){border-left-color:var(--amber)}
 .pcard:has(.s-done){border-left-color:var(--green)}
 .pcard:hover{box-shadow:var(--shadow-lift)}
-.pcard .pacts{display:flex;gap:4px;flex-shrink:0}
+.pcard .pacts{display:flex;gap:4px;flex-shrink:0;align-items:center}
+/* 依最後更新排序時才出現，讓排序依據看得見 */
+.pcard .plast{font-size:11px;font-weight:700;color:var(--ink-3);font-variant-numeric:tabular-nums;white-space:nowrap}
+/* 排序模式下不能拖，游標也別裝成可拖 */
+.prj-cards.no-drag .pcard{cursor:default}
 .pcard .pacts button{border:0;background:transparent;color:var(--ink-3);font-size:14px;line-height:1;padding:2px 5px;border-radius:5px;cursor:pointer}
 .pcard .pacts button:hover{background:var(--line-soft);color:var(--ink)}
 .pcard .pacts button.del:hover{background:var(--accent-soft);color:var(--accent)}
@@ -574,6 +578,10 @@ table.rpt tr.sum td{font-weight:700;border-top:1px solid var(--line);background:
           <button data-s="已完成">已完成</button>
         </div>
         <input type="text" id="prjSearch" placeholder="搜尋專案名稱、進展內容…">
+        <div class="seg" id="prjSort">
+          <button class="on" data-o="file" title="依 projects.md 的排列（可拖曳調整）">檔案順序</button>
+          <button data-o="recent" title="最後更新日新到舊；此模式不能拖曳">最近更新</button>
+        </div>
         <button class="btn sm" id="btnReloadPrj">重讀檔案</button>
       </div>
 
@@ -1316,7 +1324,14 @@ async function mdDo(fn, okMsg){
 }
 
 const PST_CLS = s => s === '進行中' ? 's-go' : s === '暫停' ? 's-pause' : s === '已完成' ? 's-done' : 's-none';
-let prjFilter = '', prjQ = '';
+let prjFilter = '', prjQ = '', prjSort = 'file';
+
+/* 最後更新＝專案標頭的 @日期 與最新一筆進展日期取較新者（兩邊可能不同步） */
+function prjLastUpdate(p){
+  let d = p.date || '';
+  for (const l of (p.logs || [])) if (l.date && l.date > d) d = l.date;
+  return d;
+}
 
 /* 進度條的軌道漸層：左邊已完成、右邊未完成，顏色隨進度 */
 function pbarStyle(pct){
@@ -1336,12 +1351,22 @@ function renderPrjs(){
     `<span><b>${cnt('暫停')}</b>暫停</span>` +
     `<span><b>${cnt('已完成')}</b>已完成</span>`;
   document.getElementById('prjCnt').textContent = dirHandle ? '' : '未連結資料夾';
-  document.getElementById('prjSrc').textContent = prjMdInfo || '連結資料夾後才能讀寫 ' + F_PRJ;
+  document.getElementById('prjSrc').textContent = (prjMdInfo || '連結資料夾後才能讀寫 ' + F_PRJ)
+    + (prjSort === 'recent' ? '　·　依最後更新排序中（拖曳停用，切回「檔案順序」才能拖）' : '');
 
   let shown = all.filter(p => !prjFilter || (p.status || '') === prjFilter);
   if (prjQ){
     shown = shown.filter(p =>
       (p.name + ' ' + (p.logs || []).map(l => l.text).join(' ')).toLowerCase().includes(prjQ));
+  }
+  if (prjSort === 'recent'){
+    shown = shown.slice().sort((a, b) => {
+      const da = prjLastUpdate(a), db = prjLastUpdate(b);
+      if (da === db) return 0;
+      if (!da) return 1;            // 沒有任何日期的排最後
+      if (!db) return -1;
+      return db.localeCompare(da);  // 新到舊
+    });
   }
   if (!shown.length){
     box.innerHTML = '<div class="empty">'
@@ -1370,10 +1395,12 @@ function renderPrjs(){
             + '</div>').join('')
         + '</div>'
       : '<div class="pdet"><div class="pdet-h"><span>進展與明細</span></div><div class="pdi" style="color:var(--ink-3)">還沒有進展，按 ＋ 加一筆</div></div>';
-    return `<div class="pcard" draggable="true" data-id="${p.id}">
+    const lastUp = prjLastUpdate(p);
+    return `<div class="pcard" draggable="${prjSort === 'file'}" data-id="${p.id}">
       <div class="pt">
         <div class="ptt">${title}</div>
         <div class="pacts">
+          ${prjSort === 'recent' ? `<span class="plast" title="最後更新 ${esc(lastUp || '無日期')}">${lastUp ? esc(lastUp.slice(5)) : '—'}</span>` : ''}
           <select class="pst ${PST_CLS(p.status)}" title="改狀態">
             ${['進行中','未開始','暫停','已完成'].map(s => `<option value="${s}"${s===p.status?' selected':''}>${s}</option>`).join('')}
           </select>
@@ -1425,7 +1452,9 @@ function renderPrjs(){
       row.querySelector('.ptx').onclick = () => startLogEdit(row, lineNo, el);
     });
   });
-  bindCardDrag(box);
+  /* 拖曳排序會把畫面順序寫回檔案，所以只在「檔案順序」模式下開放 */
+  box.classList.toggle('no-drag', prjSort !== 'file');
+  if (prjSort === 'file') bindCardDrag(box);
 }
 
 /* 顯示可能被拆成條列，編輯一律回查 projects.md 的原始整行 */
@@ -1530,6 +1559,10 @@ document.querySelectorAll('#prjFilter button').forEach(b => b.onclick = () => {
   prjFilter = b.dataset.s; renderPrjs();
 });
 document.getElementById('prjSearch').oninput = e => { prjQ = e.target.value.trim().toLowerCase(); renderPrjs(); };
+document.querySelectorAll('#prjSort button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('#prjSort button').forEach(x => x.classList.toggle('on', x === b));
+  prjSort = b.dataset.o; renderPrjs();
+});
 document.getElementById('btnAddPrj').onclick = () => {
   const el = document.getElementById('pjName');
   const n = el.value.trim();
