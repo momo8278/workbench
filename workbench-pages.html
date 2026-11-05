@@ -184,6 +184,9 @@ table.rpt tr.sum td{font-weight:700;border-top:1px solid var(--line);background:
 .row .x:hover{background:var(--accent-soft);color:var(--accent)}
 .row .ed{border:0;background:transparent;color:var(--ink-3);font-size:13px;line-height:1;padding:2px 4px;border-radius:5px}
 .row .ed:hover{background:var(--accent-soft);color:var(--accent)}
+.row .rc{border:0;background:transparent;color:var(--ink-3);font-size:13px;line-height:1;padding:2px 4px;border-radius:5px}
+.row .rc:hover{background:var(--blue-soft);color:var(--blue)}
+.row .rc.on{color:var(--blue)}
 .row .tnote{font-size:11.5px;color:var(--ink-3);margin-top:4px;line-height:1.5;white-space:pre-wrap;word-break:break-word}
 .ck{appearance:none;width:16px;height:16px;border:1.6px solid var(--ink-3);border-radius:5px;margin:3px 0 0;flex:0 0 16px;position:relative}
 .ck:checked{background:var(--green);border-color:var(--green)}
@@ -625,6 +628,7 @@ table.rpt tr.sum td{font-weight:700;border-top:1px solid var(--line);background:
 const K = {
   todos:   'MJ_WB_TODOS',
   events:  'MJ_WB_EVENTS',
+  recurring: 'MJ_WB_RECUR',
 };
 const CAT = {
   work:{lb:'工作', cls:'c-work'},
@@ -634,7 +638,7 @@ const CAT = {
   out :{lb:'外出', cls:'c-out'},
 };
 
-let ST = { todos:[], events:[] };
+let ST = { todos:[], events:[], recurring:[] };
 let calY, calM;
 
 /* =========================================================
@@ -886,13 +890,13 @@ async function idbGet(k){
 function stateJson(){
   return JSON.stringify({
     _meta:{ app:'mj-workbench', version:1, savedAt:new Date().toISOString() },
-    todos:ST.todos, events:ST.events
+    todos:ST.todos, events:ST.events, recurring:ST.recurring
   }, null, 2);
 }
 
 /* ---------- storage ---------- */
 function load(){
-  for (const k of ['todos','events']){
+  for (const k of ['todos','events','recurring']){
     try { ST[k] = JSON.parse(localStorage.getItem(K[k]) || '[]') || []; } catch(e){ ST[k] = []; }
   }
 }
@@ -932,7 +936,7 @@ async function readDataJson(){
     const txt = (await (await h.getFile()).text()).trim();
     if (!txt) return false;
     const js = JSON.parse(txt);
-    for (const k of ['todos','events']){
+    for (const k of ['todos','events','recurring']){
       if (Array.isArray(js[k])){ ST[k] = js[k]; localStorage.setItem(K[k], JSON.stringify(ST[k])); }
     }
     lastWrite = stateJson();
@@ -951,6 +955,7 @@ async function useDir(h, isFirstLink){
   document.getElementById('fileWho').textContent = '✓ ' + h.name + '／';
   syncUI();
   fileSt(had ? '已載入資料夾' : (isFirstLink ? '已建立 ' + F_DATA : '已載入資料夾'));
+  generateRecurring();
   renderAllLocal();
 }
 async function linkDir(){
@@ -1112,6 +1117,7 @@ function todoRow(t){
     <div class="bd"><div class="tt">${esc(t.text)}</div>
       <div class="mt"><span class="chip ${c.cls}">${c.lb}</span>${t.done ? doneDate(t.due) : dueBadge(t.due)}</div>
       ${t.note ? `<div class="tnote">${esc(t.note)}</div>` : ''}</div>
+    <button class="rc${t.recurId && ST.recurring.some(r => r.id === t.recurId) ? ' on' : ''}" title="每月循環">↻</button>
     <button class="ed" title="編輯">✎</button>
     <button class="x" title="刪除">×</button></div>`;
 }
@@ -1123,6 +1129,8 @@ function bindTodoRows(sel){
       const t = ST.todos.find(x => x.id === id);
       if (t) { t.done = ck.checked; save('todos'); renderTodos(); renderHome(); }
     };
+    const rc = r.querySelector('.rc');
+    if (rc) rc.onclick = () => toggleRecur(id);
     const ed = r.querySelector('.ed');
     if (ed) ed.onclick = () => openTodoEdit(id);
     const x = r.querySelector('.x');
@@ -1144,6 +1152,50 @@ document.getElementById('btnClearDone').onclick = () => {
   ST.todos = ST.todos.filter(t => !t.done);
   save('todos'); renderTodos(); renderHome(); renderCal();
 };
+
+/* ---------- 每月循環 ----------
+   設某待辦為「每月循環」＝建一筆範本（內容/分類/每月第幾號），之後每次開頁
+   generateRecurring() 會把本月該建而未建的自動補上（依到期日的號數）。 */
+const daysInMonth = (y, m) => new Date(y, m, 0).getDate();   // m 用 1-12
+function toggleRecur(id){
+  const t = ST.todos.find(x => x.id === id);
+  if (!t) return;
+  const tmpl = t.recurId ? ST.recurring.find(r => r.id === t.recurId) : null;
+  if (tmpl){
+    ST.recurring = ST.recurring.filter(r => r.id !== tmpl.id);
+    ST.todos.forEach(x => { if (x.recurId === tmpl.id) delete x.recurId; });
+    save('recurring'); save('todos');
+    fileSt(`已取消「${t.text}」的每月循環`);
+  } else {
+    if (!t.due){ alert('請先設到期日——每月循環會用它的「號數」每月自動產生。'); return; }
+    const rid = uid();
+    const day = Number(t.due.slice(8, 10));
+    ST.recurring.push({ id:rid, text:t.text, cat:t.cat, day, lastYM:t.due.slice(0, 7) });
+    t.recurId = rid;
+    save('recurring'); save('todos');
+    fileSt(`已設「${t.text}」每月 ${day} 號循環`);
+  }
+  renderTodos(); renderHome();
+}
+function generateRecurring(){
+  if (!Array.isArray(ST.recurring) || !ST.recurring.length) return;
+  const n = new Date(), y = n.getFullYear(), m = n.getMonth() + 1;
+  const ym = `${y}-${pad(m)}`;
+  let touched = false, created = 0;
+  for (const r of ST.recurring){
+    if (!r.day) continue;
+    if (!r.lastYM || r.lastYM < ym){
+      const due = `${y}-${pad(m)}-${pad(Math.min(r.day, daysInMonth(y, m)))}`;
+      if (!ST.todos.some(t => t.recurId === r.id && t.due === due)){
+        ST.todos.push({ id:uid(), text:r.text, cat:r.cat, due, done:false, recurId:r.id });
+        created++;
+      }
+      r.lastYM = ym; touched = true;
+    }
+  }
+  if (created) save('todos');
+  if (touched) save('recurring');
+}
 
 /* =========================================================
    行程 + 月曆
@@ -2036,6 +2088,7 @@ function renderAllLocal(){
   else await restoreDir();
 
   syncUI();
+  generateRecurring();
   renderAllLocal();
 
   const h = (location.hash || '#home').slice(1);
